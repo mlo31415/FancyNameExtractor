@@ -14,7 +14,7 @@ class FancyPage:
         self.CanName=CanName
         self.Title=Title
         self.Tags=Tags
-        self.References=Reference
+        self.References=References
         self.Redirect=Redirect
 
     def __hash__(self):
@@ -27,7 +27,7 @@ class FancyPage:
             return False
         if self.Tags != rhs.Tags:
             return False
-        if self.References != rhs.Reference:
+        if self.References != rhs.References:
             return False
         if self.Redirect != rhs.Redirect:
             return False
