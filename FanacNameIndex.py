@@ -140,7 +140,7 @@ fancySitePath=r"C:\Users\mlo\Documents\usr\Fancyclopedia\Python\site"
 
 # Create a list of the pages on the site by looking for .txt files and dropping the extension
 print("***Creating list of all pages")
-allFancy3Pages = [f[:-4] for f in os.listdir(fancySitePath) if f[0] == "a" and os.path.isfile(os.path.join(fancySitePath, f)) and f[-4:] == ".txt"]
+allFancy3Pages = [f[:-4] for f in os.listdir(fancySitePath) if f[0] in "ab" and os.path.isfile(os.path.join(fancySitePath, f)) and f[-4:] == ".txt"]
 
 fancyPagesReferences={}
 
@@ -151,7 +151,23 @@ for pageCanName in allFancy3Pages:
         fancyPagesReferences[pageCanName]=val
 
 # OK, now we have a dictionary of all the pages on Fancy 3, which contains all of their links
-# Now build up a list
+# Now build up a dictionary of redirects.  It is indexed by the canonical name of the page and the value is the canonical name of the redirect
+redirects={}
+for name, pageRefs in fancyPagesReferences.items():
+    if pageRefs.Redirect is not None:
+        redirects[pageRefs.CanName]=pageRefs.Redirect
+
+# Some of the redirects are multiple (e.g., A->B->C). Rewrite them to make all redirects single. Re-run this until there are no multiples left
+count=1
+while count > 0:
+    count=0
+    for name, redir in redirects.items():
+        if redir in redirects.keys():
+            redirects[name]=redirects[redirects[name]]
+            count+=1
+    print("count= "+str(count))
+
+
 
 i=0
 
