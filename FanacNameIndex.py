@@ -153,9 +153,9 @@ for pageCanName in allFancy3Pages:
 # OK, now we have a dictionary of all the pages on Fancy 3, which contains all of their links
 # Now build up a dictionary of redirects.  It is indexed by the canonical name of the page and the value is the canonical name of the redirect
 redirects={}
-for name, pageRefs in fancyPagesReferences.items():
-    if pageRefs.Redirect is not None:
-        redirects[pageRefs.CanName]=pageRefs.Redirect
+for name, fancyPage in fancyPagesReferences.items():
+    if fancyPage.Redirect is not None:
+        redirects[fancyPage.CanName]=fancyPage.Redirect
 
 # Some of the redirects are multiple (e.g., A->B->C). Rewrite them to make all redirects single. Re-run this until there are no multiples left
 count=1
@@ -167,7 +167,19 @@ while count > 0:
             count+=1
     print("count= "+str(count))
 
+# Create a dictionary of people.  The value is a list of pages at which they are referenced.
+# First locate all the people and create empty entries for them
+people={}
+for name, fancyPage in fancyPagesReferences.items():
+    if "fan" in fancyPage.Tags or "pro" in fancyPage.Tags:
+        if name not in people.keys():
+            people[name]=[]
 
+# Now go through all the pages's references
+for name, fancyPage in fancyPagesReferences.items():
+    if fancyPage.References is not None:
+        for ref in fancyPage.References:
+            i=0
 
 i=0
 
