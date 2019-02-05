@@ -28,3 +28,5 @@ class Reference:
             self.RedirectName=object.RedirectName
         return self
 
+    def __hash__(self):
+        return self.CanName.__hash__()+self.LinkText.__hash__()+self.Importance.__hash__()+self.ParentPageName.__hash__()+self.FanacURL.__hash__()+self.RedirectName.__hash__()

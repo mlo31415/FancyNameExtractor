@@ -17,3 +17,18 @@ class FancyPage:
         self.References=Reference
         self.Redirect=Redirect
 
+    def __hash__(self):
+        return self.CanName.__hash__()+self.Title.__hash__()+self.Redirect.__hash__()+self.Tags.__hash__()+self.References.__hash__()
+
+    def __eq__(self, rhs):
+        if self.CanName != rhs.CanName:
+            return False
+        if self.Title != rhs.Title:
+            return False
+        if self.Tags != rhs.Tags:
+            return False
+        if self.References != rhs.Reference:
+            return False
+        if self.Redirect != rhs.Redirect:
+            return False
+        return True
