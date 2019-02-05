@@ -52,6 +52,15 @@ def ReadTagsAndTitle(pagePath):
 
 
 #*******************************************************
+# Is this page a redirect?  If so, return the page it redirects to.
+def IsRedirect(pageText):
+    pageText=pageText.strip()  # Remove leading and trailing whitespace
+    if pageText.lower().startswith('[[module redirect destination="') and pageText.endswith('"]]'):
+        return pageText[31:].rstrip('"]')
+    return None
+
+
+#*******************************************************
 # Read a page and return a FancyPage
 # pagePath will be the path to the page's source (i.e., ending in .txt)
 def ReadPage(path, page):
@@ -72,15 +81,9 @@ def ReadPage(path, page):
     with open(os.path.join(pagePath), "rb") as f:   # Reading in binary and doing the funny decode is to handle special characters embedded in some sources.
         source=f.read().decode("cp437")
 
-    def IsRedirect(pageText):
-        pageText=pageText.strip()  # Remove leading and trailing whitespace
-        if pageText.lower().startswith('[[module redirect destination="') and pageText.endswith('"]]'):
-            return pageText[31:].rstrip('"]')
-        return None
-
     # If this is a redirect, we're done.
     redirect=IsRedirect(source)
-    if redirect:
+    if redirect is not None:
         fancyPage.Redirect=redirect
         return fancyPage
 
@@ -88,7 +91,7 @@ def ReadPage(path, page):
     # A link is one of these formats:
     #   [[[link]]]
     #   [[[link|display text]]]
-    links=[]
+    links=set()
     while len(source) > 0:
         loc=source.find("[[[")
         if loc == -1:
@@ -102,12 +105,12 @@ def ReadPage(path, page):
             link=link[:link.find("|")]
 
         ref=Reference.Reference(LinkText=link.strip(), ParentPageName=page)
-        links.append(ref)
+        links.add(ref)
 
         # trim off the text which has been processed and try again
         source=source[loc2:]
 
-    fancyPage.References=links
+    fancyPage.References=list(links)
 
     return fancyPage
 
@@ -143,8 +146,12 @@ fancyPagesReferences={}
 
 print("***Scanning pages for links")
 for pageCanName in allFancy3Pages:
-    fancyPagesReferences[pageCanName]=ReadPage(fancySitePath, pageCanName)
+    val=ReadPage(fancySitePath, pageCanName)
+    if val is not None:
+        fancyPagesReferences[pageCanName]=val
 
+# OK, now we have a dictionary of all the pages on Fancy 3, which contains all of their links
+# Now build up a list
 
 i=0
 
