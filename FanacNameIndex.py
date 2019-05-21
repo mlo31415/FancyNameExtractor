@@ -3,6 +3,7 @@ import re as RegEx
 import xml.etree.ElementTree as ET
 import Reference
 import FancyPage
+import Helpers
 
 # The goal of this program is to produce an index to all of the names on Fancy 3 and fanac.org with links to everything interesting about them.
 # We'll construct a master list of names with a preferred name and zero or more variants.
@@ -16,7 +17,7 @@ import FancyPage
 
 # We'll work entirely on the local copies of the two sites.
 
-# There will be a dictionary, nameVariants, indexed by every form of every name. The value will be the cannonical form of the name.
+# There will be a dictionary, nameVariants, indexed by every form of every name. The value will be the canonical form of the name.
 # There will be a second dictionary, people, indexed by the canonical name and containing an unordered list of Reference structures
 # A Reference will contain:
 #       The canonical name
@@ -32,7 +33,7 @@ people={}
 
 # ----------------------------------------------------------
 # Read a page's tags and title
-def ReadTagsAndTitle(pagePath):
+def ReadTagsAndTitle(pagePath: str):
     tree=ET.ElementTree().parse(os.path.splitext(pagePath)[0]+".xml")
 
     titleEl=tree.find("title")
@@ -53,7 +54,7 @@ def ReadTagsAndTitle(pagePath):
 
 #*******************************************************
 # Is this page a redirect?  If so, return the page it redirects to.
-def IsRedirect(pageText):
+def IsRedirect(pageText: str):
     pageText=pageText.strip()  # Remove leading and trailing whitespace
     if pageText.lower().startswith('[[module redirect destination="') and pageText.endswith('"]]'):
         return pageText[31:].rstrip('"]')
@@ -63,19 +64,19 @@ def IsRedirect(pageText):
 #*******************************************************
 # Read a page and return a FancyPage
 # pagePath will be the path to the page's source (i.e., ending in .txt)
-def ReadPage(path, page):
+def ReadPage(path: str, page: str):
     pagePath=os.path.join(path, page)+".txt"
 
     if not os.path.isfile(pagePath):
         #log.Write()
         return None
 
-    fancyPage=FancyPage.FancyPage()
-    fancyPage.CanName=os.path.splitext(page)[0]     # Page is name+".txt", no path.  Get rid of the extension and save the name.
+    fp=FancyPage.FancyPage()
+    fp.CanName=os.path.splitext(page)[0]     # Page is name+".txt", no path.  Get rid of the extension and save the name.
 
     tags, title=ReadTagsAndTitle(pagePath)
-    fancyPage.Tags=tags
-    fancyPage.Title=title
+    fp.Tags=tags
+    fp.Title=title
 
     # Read through the source pulling out links.
     with open(os.path.join(pagePath), "rb") as f:   # Reading in binary and doing the funny decode is to handle special characters embedded in some sources.
@@ -84,8 +85,8 @@ def ReadPage(path, page):
     # If this is a redirect, we're done.
     redirect=IsRedirect(source)
     if redirect is not None:
-        fancyPage.Redirect=redirect
-        return fancyPage
+        fp.Redirect=redirect
+        return fp
 
     # Now we scan the source for links.
     # A link is one of these formats:
@@ -104,23 +105,22 @@ def ReadPage(path, page):
         if "|" in link:
             link=link[:link.find("|")]
 
-        ref=Reference.Reference(LinkText=link.strip(), ParentPageName=page)
-        links.add(ref)
+        links.add(Reference.Reference(LinkText=link.strip(), ParentPageName=page))
 
         # trim off the text which has been processed and try again
         source=source[loc2:]
 
-    fancyPage.References=list(links)
+    fp.OutgoingReferences=list(links)
 
-    return fancyPage
+    return fp
 
 
 #*******************************************************
 # Is this likely to be a person's name?
 # A hit is of the form <name1> <initial> <name2> where name1 is in the list of first names
-def IsAName(name):
+def IsAName(s: str):
     pattern="^([A-Z]([a-z]|+\.)\s+([A-Z]\.?)\s+([A-Z]([a-z]|+\.)$"
-    m=RegEx.match(pattern, name.strip())
+    m=RegEx.match(pattern, s.strip())
     if m is None:
         return False
 
@@ -139,23 +139,23 @@ fancySitePath=r"C:\Users\mlo\Documents\usr\Fancyclopedia\Python\site"
 # If there are attachments, they're in a folder named <name>. We don't need to look at that in this program
 
 # Create a list of the pages on the site by looking for .txt files and dropping the extension
-print("***Creating list of all pages")
+print("***Creating list of all Fancyclopedia pages")
 allFancy3Pages = [f[:-4] for f in os.listdir(fancySitePath) if f[0] in "ab" and os.path.isfile(os.path.join(fancySitePath, f)) and f[-4:] == ".txt"]
 
 fancyPagesReferences={}
 
-print("***Scanning pages for links")
+print("***Scanning Fancyclopedia pages for links")
 for pageCanName in allFancy3Pages:
     val=ReadPage(fancySitePath, pageCanName)
     if val is not None:
         fancyPagesReferences[pageCanName]=val
 
-# OK, now we have a dictionary of all the pages on Fancy 3, which contains all of their links
+# OK, now we have a dictionary of all the pages on Fancy 3, which contains all of their outgoing links
 # Now build up a dictionary of redirects.  It is indexed by the canonical name of the page and the value is the canonical name of the redirect
 redirects={}
 for name, fancyPage in fancyPagesReferences.items():
     if fancyPage.Redirect is not None:
-        redirects[fancyPage.CanName]=fancyPage.Redirect
+        redirects[fancyPage.CanonName]=fancyPage.Redirect
 
 # Some of the redirects are multiple (e.g., A->B->C). Rewrite them to make all redirects single. Re-run this until there are no multiples left
 count=1
@@ -175,11 +175,14 @@ for name, fancyPage in fancyPagesReferences.items():
         if name not in people.keys():
             people[name]=[]
 
-# Now go through all the pages's references
+# Now go through all references of the pages
 for name, fancyPage in fancyPagesReferences.items():
-    if fancyPage.References is not None:
-        for ref in fancyPage.References:
-            i=0
+    if fancyPage.OutgoingReferences is not None:
+        for ref in fancyPage.OutgoingReferences:
+            cannonLink=Helpers.Canonicize(ref.LinkText)
+            if cannonLink in people.keys():    # So it's a people
+                people[cannonLink].append(ref.ParentPageName)
+
 
 i=0
 
