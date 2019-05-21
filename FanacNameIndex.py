@@ -28,7 +28,7 @@ import Helpers
 #       If a redirect, the redirect name
 
 nameVariants={}
-people={}
+peopleReferences={}
 
 
 # ----------------------------------------------------------
@@ -64,7 +64,7 @@ def IsRedirect(pageText: str):
 #*******************************************************
 # Read a page and return a FancyPage
 # pagePath will be the path to the page's source (i.e., ending in .txt)
-def ReadPage(path: str, page: str):
+def DigestPage(path: str, page: str):
     pagePath=os.path.join(path, page)+".txt"
 
     if not os.path.isfile(pagePath):
@@ -72,7 +72,7 @@ def ReadPage(path: str, page: str):
         return None
 
     fp=FancyPage.FancyPage()
-    fp.CanName=os.path.splitext(page)[0]     # Page is name+".txt", no path.  Get rid of the extension and save the name.
+    fp.CanonName=os.path.splitext(page)[0]     # Page is name+".txt", with no path.  Get rid of the extension and save the name.
 
     tags, title=ReadTagsAndTitle(pagePath)
     fp.Tags=tags
@@ -105,10 +105,10 @@ def ReadPage(path: str, page: str):
         if "|" in link:
             link=link[:link.find("|")]
 
-        links.add(Reference.Reference(LinkText=link.strip(), ParentPageName=page))
+        links.add(Reference.Reference(LinkText=link.strip(), ParentPageName=page, CanonName=Helpers.CanonicizeString(link.strip())))
 
         # trim off the text which has been processed and try again
-        source=source[loc2:]
+        source=source[loc2+3:]
 
     fp.OutgoingReferences=list(links)
 
@@ -140,13 +140,14 @@ fancySitePath=r"C:\Users\mlo\Documents\usr\Fancyclopedia\Python\site"
 
 # Create a list of the pages on the site by looking for .txt files and dropping the extension
 print("***Creating list of all Fancyclopedia pages")
-allFancy3Pages = [f[:-4] for f in os.listdir(fancySitePath) if f[0] in "ab" and os.path.isfile(os.path.join(fancySitePath, f)) and f[-4:] == ".txt"]
+allFancy3Pages = [f[:-4] for f in os.listdir(fancySitePath) if os.path.isfile(os.path.join(fancySitePath, f)) and f[-4:] == ".txt"]
+#allFancy3Pages= [f for f in allFancy3Pages if f[0] in "ab"]        # Just to cut down the number of pages for debugging purposes
 
 fancyPagesReferences={}
 
 print("***Scanning Fancyclopedia pages for links")
 for pageCanName in allFancy3Pages:
-    val=ReadPage(fancySitePath, pageCanName)
+    val=DigestPage(fancySitePath, pageCanName)
     if val is not None:
         fancyPagesReferences[pageCanName]=val
 
@@ -167,21 +168,23 @@ while count > 0:
             count+=1
     print("count= "+str(count))
 
-# Create a dictionary of people.  The value is a list of pages at which they are referenced.
-# First locate all the people and create empty entries for them
-people={}
-for name, fancyPage in fancyPagesReferences.items():
-    if "fan" in fancyPage.Tags or "pro" in fancyPage.Tags:
-        if name not in people.keys():
-            people[name]=[]
+# Create a dictionary of page references for people pages.
+# The key is a page's canonical name; the value is a list of pages at which they are referenced.
 
-# Now go through all references of the pages
-for name, fancyPage in fancyPagesReferences.items():
+# First locate all the people and create empty entries for them
+peopleReferences={}
+for pagename, fancyPage in fancyPagesReferences.items():
+    if "fan" in fancyPage.Tags or "pro" in fancyPage.Tags:
+        if pagename not in peopleReferences.keys():
+            peopleReferences[pagename]=[]
+
+# Now go through all outgoing references on the pages and add those which reference a person to that person's list
+for pagename, fancyPage in fancyPagesReferences.items():
     if fancyPage.OutgoingReferences is not None:
-        for ref in fancyPage.OutgoingReferences:
-            cannonLink=Helpers.Canonicize(ref.LinkText)
-            if cannonLink in people.keys():    # So it's a people
-                people[cannonLink].append(ref.ParentPageName)
+        for outRef in fancyPage.OutgoingReferences:
+            cannonLink=Helpers.Canonicize(outRef.LinkText)
+            if cannonLink in peopleReferences.keys():    # So it's a people
+                peopleReferences[cannonLink].append(pagename)
 
 
 i=0
