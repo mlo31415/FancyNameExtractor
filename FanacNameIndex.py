@@ -186,6 +186,41 @@ for pagename, fancyPage in fancyPagesReferences.items():
             if cannonLink in peopleReferences.keys():    # So it's a people
                 peopleReferences[cannonLink].append(pagename)
 
+# Write out a file containing canonical names, each with a list of pages which refer to it.
+# The format will be
+#     **<canonical name>
+#     <referring page>
+#     <referring page>
+#     ...
+#     **<cannonical name>
+#     ...
+with open("Referring pages.txt", "w+") as f:
+    for cannonPerson, pagenames in peopleReferences.items():
+        f.write("**"+cannonPerson+"\n")
+        for pagename in pagenames:
+            f.write("  "+pagename+"\n")
+
+# Now a list of redirects.
+# We use basically the same format:
+#   **<target page>
+#   <redirect to it>
+#   <redirect to it>
+# ...
+
+# First, we invert the redirects so each entry is a canonical page and all the canonical pages that redirect to it.
+inverseRedirects={}
+for page, redirect in redirects.items():
+    if redirect in inverseRedirects.keys():
+        inverseRedirects[redirect].append(page)
+    else:
+        inverseRedirects[redirect]=[page]
+
+# Now dump the inverse redirects to a file
+with open("Redirects.txt", "w+") as f:
+    for redirect, pages in inverseRedirects.items():
+        f.write("**"+redirect+"\n")
+        for page in pages:
+            f.write("  "+page+"\n")
 
 i=0
 
