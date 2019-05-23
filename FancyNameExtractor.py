@@ -30,6 +30,7 @@ import Helpers
 nameVariants={}
 peopleReferences={}
 
+#Test
 
 # ----------------------------------------------------------
 # Read a page's tags and title
