@@ -140,53 +140,79 @@ fancySitePath=r"C:\Users\mlo\Documents\usr\Fancyclopedia\Python\site"
 # If there are attachments, they're in a folder named <name>. We don't need to look at that in this program
 
 # Create a list of the pages on the site by looking for .txt files and dropping the extension
-print("***Creating list of all Fancyclopedia pages")
-allFancy3Pages = [f[:-4] for f in os.listdir(fancySitePath) if os.path.isfile(os.path.join(fancySitePath, f)) and f[-4:] == ".txt"]
-#allFancy3Pages= [f for f in allFancy3Pages if f[0] in "ab"]        # Just to cut down the number of pages for debugging purposes
+print("***Creating a list of all Fancyclopedia pages")
+allFancy3PagesCanon = [f[:-4] for f in os.listdir(fancySitePath) if os.path.isfile(os.path.join(fancySitePath, f)) and f[-4:] == ".txt"]
+#allFancy3PagesCanon= [f for f in allFancy3PagesCanon if f[0] in "ab"]        # Just to cut down the number of pages for debugging purposes
 
 fancyPagesReferences={}
+fancyCanonNameToTitle={}
 
 print("***Scanning Fancyclopedia pages for links")
-for pageCanName in allFancy3Pages:
+for pageCanName in allFancy3PagesCanon:
     val=DigestPage(fancySitePath, pageCanName)
+    fancyCanonNameToTitle[val.CanonName]=val.Title
     if val is not None:
         fancyPagesReferences[pageCanName]=val
 
-# OK, now we have a dictionary of all the pages on Fancy 3, which contains all of their outgoing links
-# Now build up a dictionary of redirects.  It is indexed by the canonical name of the page and the value is the canonical name of the redirect
-redirects={}
-for name, fancyPage in fancyPagesReferences.items():
-    if fancyPage.Redirect is not None:
-        redirects[fancyPage.CanonName]=fancyPage.Redirect
+print("***Computing redirect structure")
+# A FancyPage has an UltimateRedirect which can only be filled in once all the redirects are known.
+# Run through the pages and fill in UltimateRedirect.
+def GetUltimateRedirect(fancyPagesReferences, redirect):
+    if redirect is None:
+        return None
+    redirect=Helpers.CanonicizeString(redirect)
+    if redirect not in fancyPagesReferences.keys():   # Target of redirect does not exist, so this redirect is the ultimate redirect
+        return redirect
+    if fancyPagesReferences[redirect] is None:  # Target of redirect does not exist, so this redirect is the ultimate redirect
+        return redirect
+    if fancyPagesReferences[redirect].Redirect is None: # Target is a real page, so that real page is the ultimate redirect
+        return fancyPagesReferences[redirect].CanonName
+    return GetUltimateRedirect(fancyPagesReferences, fancyPagesReferences[redirect].Redirect)
 
-# Some of the redirects are multiple (e.g., A->B->C). Rewrite them to make all redirects single. Re-run this until there are no multiples left
-count=1
-while count > 0:
-    count=0
-    for name, redir in redirects.items():
-        if redir in redirects.keys():
-            redirects[name]=redirects[redirects[name]]
-            count+=1
-    print("count= "+str(count))
+# Fill in the UltimteRedirect element
+for canname, fancyPage in fancyPagesReferences.items():
+    if fancyPage.Redirect is not None:
+        fancyPage.UltimateRedirect=GetUltimateRedirect(fancyPagesReferences, fancyPage.Redirect)
+
+# OK, now we have a dictionary of all the pages on Fancy 3, which contains all of their outgoing links
+# Now build up a dictionary of redirects.  It is indexed by the canonical name of a page and the value is the canonical name of the ultimate redirect
+# We also build up a list of all the pages that redirect *to* a given page, also indexed by the page's canonical name
+redirects={}
+inverseRedirects={}
+for canname, fancyPage in fancyPagesReferences.items():
+    if fancyPage.Redirect is not None:
+        if fancyPage.Redirect is not None:
+            assert fancyPage.UltimateRedirect is not None
+        else:
+            assert fancyPage.UltimateRedirect is None
+        redirects[fancyPage.CanonName]=fancyPage.UltimateRedirect
+        if fancyPage.Redirect not in inverseRedirects.keys():
+            inverseRedirects[fancyPage.Redirect]=[]
+        inverseRedirects[fancyPage.Redirect].append(fancyPage.CanonName)
+        if fancyPage.UltimateRedirect not in inverseRedirects.keys():
+            inverseRedirects[fancyPage.UltimateRedirect]=[]
+        inverseRedirects[fancyPage.UltimateRedirect].append(fancyPage.CanonName)
 
 # Create a dictionary of page references for people pages.
 # The key is a page's canonical name; the value is a list of pages at which they are referenced.
 
 # First locate all the people and create empty entries for them
 peopleReferences={}
-for pagename, fancyPage in fancyPagesReferences.items():
-    if "fan" in fancyPage.Tags or "pro" in fancyPage.Tags:
-        if pagename not in peopleReferences.keys():
-            peopleReferences[pagename]=[]
+print("***Creating list of people references")
+for canpagename, fancyPage in fancyPagesReferences.items():
+    if fancyPage.IsPerson():
+        if canpagename not in peopleReferences.keys():
+            peopleReferences[canpagename]=[]
 
 # Now go through all outgoing references on the pages and add those which reference a person to that person's list
-for pagename, fancyPage in fancyPagesReferences.items():
+for canpagename, fancyPage in fancyPagesReferences.items():
     if fancyPage.OutgoingReferences is not None:
         for outRef in fancyPage.OutgoingReferences:
             cannonLink=Helpers.Canonicize(outRef.LinkText)
             if cannonLink in peopleReferences.keys():    # So it's a people
-                peopleReferences[cannonLink].append(pagename)
+                peopleReferences[cannonLink].append(canpagename)
 
+print("***Writing reports")
 # Write out a file containing canonical names, each with a list of pages which refer to it.
 # The format will be
 #     **<canonical name>
@@ -207,21 +233,24 @@ with open("Referring pages.txt", "w+") as f:
 #   <redirect to it>
 #   <redirect to it>
 # ...
-
-# First, we invert the redirects so each entry is a canonical page and all the canonical pages that redirect to it.
-inverseRedirects={}
-for page, redirect in redirects.items():
-    if redirect in inverseRedirects.keys():
-        inverseRedirects[redirect].append(page)
-    else:
-        inverseRedirects[redirect]=[page]
-
 # Now dump the inverse redirects to a file
-with open("Redirects.txt", "w+") as f:
+with open("Redirects.txt", "w+", encoding='utf8') as f:
     for redirect, pages in inverseRedirects.items():
         f.write("**"+redirect+"\n")
         for page in pages:
             f.write("  "+page+"\n")
+
+# Write out a file of peoples' names. They are taken from the titles of pages marked as fan or pro
+with open("Peoples names.txt", "w+") as f:
+    # First all the pages labelled as "fan" or "pro"
+    for canpagename, fancyPage in fancyPagesReferences.items():
+        if fancyPage.IsPerson():
+            f.write(fancyPage.Title+"\n")
+            # Then all the redirects to one of those pages.
+            pagename=fancyCanonNameToTitle[canpagename]
+            if pagename in inverseRedirects.keys():
+                for p in inverseRedirects[pagename]:
+                    f.write(fancyCanonNameToTitle[p]+"\n")
 
 i=0
 
