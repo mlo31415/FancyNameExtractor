@@ -1,8 +1,9 @@
 #------------------------------------------------------------------
 # Take an arbitrary string and return it in Wikidot Canonical form
-def CanonicizeString(name):
+def CanonicizeString(name: str):
     out = []
     inJunk = False
+    name=name.lower()
     for c in name:
         if c.isalnum() or c == ':':     # ":", the category separator, is an honorary alphanumeric
             if inJunk:
