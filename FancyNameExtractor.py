@@ -130,6 +130,8 @@ fancyCanonNameToTitle={}
 
 print("***Scanning Fancyclopedia pages for links")
 for pageCanName in allFancy3PagesCanon:
+    if pageCanName.startswith("index_"):  # Don't look at the index_ pages
+        continue
     val=DigestPage(fancySitePath, pageCanName)
     if val is not None:
         fancyCanonNameToTitle[val.CanonName]=val.Title
@@ -205,7 +207,7 @@ print("***Writing reports")
 #     ...
 with open("Referring pages.txt", "w+") as f:
     for cannonPerson, pagenames in peopleReferences.items():
-        f.write("**"+cannonPerson+"\n")
+        f.write("**"+fancyCanonNameToTitle[cannonPerson]+"\n")
         for pagename in pagenames:
             f.write("  "+pagename+"\n")
 
