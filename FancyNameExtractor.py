@@ -74,16 +74,13 @@ def DigestPage(path: str, page: str):
 
     fp=FancyPage.FancyPage()
     fp.CanonName=os.path.splitext(page)[0]     # Page is name+".txt", with no path.  Get rid of the extension and save the name.
+    fp.tags, fp.title=ReadTagsAndTitle(pagePath)
 
-    tags, title=ReadTagsAndTitle(pagePath)
-    fp.Tags=tags
-    fp.Title=title
-
-    # Read through the source pulling out links.
+    # Load the page's source
     with open(os.path.join(pagePath), "rb") as f:   # Reading in binary and doing the funny decode is to handle special characters embedded in some sources.
-        source=f.read().decode("cp437")
+        source=f.read().decode("cp437") # decode("cp437") is magic to handle funny foreign characters
 
-    # If this is a redirect, we're done.
+    # If the page is a redirect, we're done.
     redirect=IsRedirect(source)
     if redirect is not None:
         fp.Redirect=redirect
@@ -93,7 +90,7 @@ def DigestPage(path: str, page: str):
     # A link is one of these formats:
     #   [[[link]]]
     #   [[[link|display text]]]
-    links=set()
+    links=set()     # Start out with a set so we don't keep duplicates
     while len(source) > 0:
         loc=source.find("[[[")
         if loc == -1:
@@ -111,7 +108,7 @@ def DigestPage(path: str, page: str):
         # trim off the text which has been processed and try again
         source=source[loc2+3:]
 
-    fp.OutgoingReferences=list(links)
+    fp.OutgoingReferences=list(links)       # We need to turn the set into a list
 
     return fp
 
@@ -134,8 +131,8 @@ fancyCanonNameToTitle={}
 print("***Scanning Fancyclopedia pages for links")
 for pageCanName in allFancy3PagesCanon:
     val=DigestPage(fancySitePath, pageCanName)
-    fancyCanonNameToTitle[val.CanonName]=val.Title
     if val is not None:
+        fancyCanonNameToTitle[val.CanonName]=val.Title
         fancyPagesReferences[pageCanName]=val
 
 print("***Computing redirect structure")
