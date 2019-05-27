@@ -74,7 +74,7 @@ def DigestPage(path: str, page: str):
 
     fp=FancyPage.FancyPage()
     fp.CanonName=os.path.splitext(page)[0]     # Page is name+".txt", with no path.  Get rid of the extension and save the name.
-    fp.tags, fp.title=ReadTagsAndTitle(pagePath)
+    fp.Tags, fp.Title=ReadTagsAndTitle(pagePath)
 
     # Load the page's source
     with open(os.path.join(pagePath), "rb") as f:   # Reading in binary and doing the funny decode is to handle special characters embedded in some sources.
