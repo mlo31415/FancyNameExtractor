@@ -137,6 +137,12 @@ for pageCanName in allFancy3PagesCanon:
         fancyCanonNameToTitle[val.CanonName]=val.Title
         fancyPagesReferences[pageCanName]=val
 
+with open("Cononical names to real names.txt", "w+", encoding='utf8') as f:
+    for canon, title in fancyCanonNameToTitle.items():
+        if not canon.startswith("system_"):
+            f.write(canon+"-->"+title+"\n")
+
+
 print("***Computing redirect structure")
 # A FancyPage has an UltimateRedirect which can only be filled in once all the redirects are known.
 # Run through the pages and fill in UltimateRedirect.
