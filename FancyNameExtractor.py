@@ -137,7 +137,7 @@ for pageCanName in allFancy3PagesCanon:
         fancyCanonNameToTitle[val.CanonName]=val.Title
         fancyPagesReferences[pageCanName]=val
 
-with open("Cononical names to real names.txt", "w+", encoding='utf8') as f:
+with open("Canonical names to real names.txt", "w+", encoding='utf8') as f:
     for canon, title in fancyCanonNameToTitle.items():
         if not canon.startswith("system_"):
             f.write(canon+"-->"+title+"\n")
@@ -224,7 +224,7 @@ with open("Referring pages.txt", "w+") as f:
 #   <redirect to it>
 # ...
 # Now dump the inverse redirects to a file
-with open("Redirects.txt", "w+", encoding='utf8') as f:
+with open("Redirects.txt", "w+", encoding='utf-8') as f:
     for redirect, pages in inverseRedirects.items():
         f.write("**"+redirect+"\n")
         for page in pages:
