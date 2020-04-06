@@ -1,32 +1,45 @@
 # A file to define the Reference class
-from dataclasses import dataclass, field
+from __future__ import annotations
+from typing import Optional
+from dataclasses import dataclass
+
+from HelpersPackage import WindowsFilenameToWikiPagename
 
 @dataclass(order=False)
 class Reference:
-    CanonName: str=None       # The Wikidot canonical name
-    LinkText: str=None      # The as-used name (the link text in Wikidot)
-    Importance: int=3       # An importance code (initially 1, 2 or 3 with 3 being least important)
-    ParentPageName: str=None      # If from a reference to Fancy, the name of the Fancy page it is on (else None)
-    FanacURL: str=None      # If a reference to fanac.org, the URL of the page it was on (else None)
-    RedirectName: str=None  # If a redirect, the redirect's target.  Note that not all redirects are from Fancy
+    def __init__(self, LinkWikiName: Optional[str]=None, LinkDisplayText: Optional[str]=None, ParentPageName: Optional[str]=None, FanacURL: Optional[str]=None) -> None:
+        self._LinkWikiName=LinkWikiName         # The wiki name of the page being linked to if it is a link to Fancy 3 (else None)
+                                                # Note that this not the wiki page's canonical name.
+        self._LinkDisplayText=LinkDisplayText   # The text actually used on the page for the link [[the stuff between the brackets]]
+        self._ParentPageName=ParentPageName     # If from a reference to Fancy, the name of the Fancy page it is on (else None)
+        self._FanacURL=FanacURL                 # If a reference to fanac.org, the URL of the page it was on (else None)
 
-    def __init__(self, CanonName=None, LinkText=None, Importance=3, ParentPageName=None, FanacURL=None, RedirectName=None):
-        self.CanonName=CanonName
-        self.LinkText=LinkText
-        self.Importance=Importance
-        self.ParentPageName=ParentPageName
-        self.FanacURL=FanacURL
-        self.RedirectName=RedirectName
-
-    def Copy(self, object):
-        if type(object) is Reference:
-            self.CanonName=object.CanonName
-            self.LinkText=object.LinkText
-            self.Importance=object.Importance
-            self.ParentPageName=object.ParentPageName
-            self.FanacURL=object.FanacURL
-            self.RedirectName=object.RedirectName
+    def Copy(self, val):
+        if type(val) is Reference:
+            self._LinkWikiName=val.LinkWikiName
+            self._LinkDisplayText=val.LinkText
+            self._ParentPageName=val.ParentPageName
+            self._FanacURL=val.FanacURL
         return self
 
     def __hash__(self):
-        return self.CanonName.__hash__()+self.LinkText.__hash__()+self.Importance.__hash__()+self.ParentPageName.__hash__()+self.FanacURL.__hash__()+self.RedirectName.__hash__()
+        return self._LinkWikiName.__hash__()+self._LinkDisplayText.__hash__()+self._ParentPageName.__hash__()+self._FanacURL.__hash__()
+
+    def __str__(self) -> str:
+        return self._LinkDisplayText+" -> "+WindowsFilenameToWikiPagename(self._LinkWikiName)
+
+    @property
+    def LinkText(self) -> str:
+        return self._LinkDisplayText
+
+    @property
+    def LinkWikiName(self) -> str:
+        return self._LinkWikiName
+
+    @property
+    def ParentPageName(self) -> str:
+        return self._ParentPageName
+
+    @property
+    def FanacURL(self) -> str:
+        return self._FanacURL
