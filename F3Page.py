@@ -1,26 +1,34 @@
 # A file to define a class to hold the characteristics of a Fancy 3 page
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional, List, Union
+
 from Reference import Reference
+
+from Log import Log
+from HelpersPackage import IsInt
 
 @dataclass(order=False)
 class F3Page:
-    def __init__(self, WikiFilename: Optional[str]=None,
-                 DisplayTitle: Optional[str]=None,
-                 Name: Optional[str]=None,
-                 Tags: Optional[List[str]]=None,
-                 Redirect: Optional[str]=None,
-                 UltimateRedirect: Optional[str]=None,
-                 OutgoingReferences: List[Reference]=None
-                 ):
-        self._WikiFilename=WikiFilename         # The page's Mediawiki "file" name, e.g., Now_Is_the_Time
-        self._DisplayTitle=DisplayTitle         # The title displayed for the page (takes DISPLAYTITLE into account if it has been set; otherwise is Name)
-        self._Name=Name                         # The page's Mediawiki name (ignores DISPLAYTITLE, so if DISPLAYTITLE is absent is the same as DisplayTitle)  e.g., Now Is the Time
-        self._Redirect=Redirect                 # If this is a redirect page, the Wikiname name of the page to which it redirects
-        self._UltimateRedirect=UltimateRedirect         # If this is a redirect page, the non-canonical name of the ultimate page that this chain of redirects leads to
-        self._Tags=Tags                         # A list of tags associated with this page
-        self._OutgoingReferences=OutgoingReferences     # A list of all the references on this page
+    def __init__(self):
+        self._WikiFilename: Optional[str]=None                      # The page's Mediawiki "file" name, e.g., Now_Is_the_Time
+        self._DisplayTitle: Optional[str]=None                      # The title displayed for the page (takes DISPLAYTITLE into account if it has been set; otherwise is Name)
+        self._Name: Optional[str]=None                              # The page's Mediawiki name (ignores DISPLAYTITLE, so if DISPLAYTITLE is absent is the same as DisplayTitle)  e.g., Now Is the Time
+        self._Redirect: Optional[str]=None                          # If this is a redirect page, the Wikiname name of the page to which it redirects
+        self._UltimateRedirect: Optional[bool]=None                  # If this is a redirect page, the non-canonical name of the ultimate page that this chain of redirects leads to
+        self._IsRedirectpage: Optional[str]=None
+        self._Tags: Optional[List[str]]=None                        # A list of tags associated with this page
+        self._OutgoingReferences: Optional[List[Reference]]=None    # A list of all the references on this page
+        self._WikiUrlname: Optional[str]=None
+        self._NumRevisions: Optional[int]=None
+        self._Pageid: Optional[str]=None
+        self._Revid: Optional[str]=None
+        self._Edittime: Optional[str]=None
+        self._Permalink: Optional[str]=None
+        self._Timestamp: Optional[str]=None
+        self._User: Optional[str]=None
+        self._WindowsFilename: Optional[str]=None
+        self._Categories: Optional[str]=None
 
     def __hash__(self):
         return self._WikiFilename.__hash__()+self._DisplayTitle.__hash__()+self._Name.__hash__()+self._Redirect.__hash__()+self._UltimateRedirect.__hash__()+self._Tags.__hash__()+self._OutgoingReferences.__hash__()
@@ -56,10 +64,10 @@ class F3Page:
 
     @property
     def WikiUrlname(self) -> str:
-        return self._WikiFilename
+        return self._WikiUrlname
     @WikiUrlname.setter
     def WikiUrlname(self, val: Optional[str]):
-        self._WikiFilename=val
+        self._WikiUrlname=val
 
     @property
     def Name(self) -> str:
@@ -76,11 +84,18 @@ class F3Page:
         self._Redirect=val
 
     @property
-    def UltimateRedirect(self) -> str:
+    def UltimateRedirect(self) -> Optional[str]:
         return self._UltimateRedirect
     @UltimateRedirect.setter
-    def UltimateRedirect(self, val: Optional[str]):
+    def UltimateRedirect(self, val: str):
         self._UltimateRedirect=val
+
+    @property
+    def IsRedirectpage(self) -> Optional[bool]:
+        return self._IsRedirectpage
+    @IsRedirectpage.setter
+    def IsRedirectpage(self, val: str):
+        self._IsRedirectpage=(val == "True")
 
     @property
     def Tags(self) -> List[str]:
@@ -95,3 +110,97 @@ class F3Page:
     @OutgoingReferences.setter
     def OutgoingReferences(self, val: Optional[str]):
         self._OutgoingReferences=val
+
+    @property
+    def WikiFilename(self) -> Optional[str]:
+        return self._WikiFilename
+    @WikiFilename.setter
+    def WikiFilename(self, val: Optional[str]):
+        self._WikiFilename=val
+
+    @property
+    def NumRevisions(self) -> Optional[int]:
+        return self._NumRevisions
+    @NumRevisions.setter
+    def NumRevisions(self, val: Union[str, int]):
+        if isinstance(val, int):
+            self._NumRevisions=val
+        elif isinstance(val, str):
+            if IsInt(val):
+                self._NumRevisions=int(val)
+            else:
+                Log("F3Page.NumRevisions setter: not an int: '"+val+"'", isError=True)
+        else:
+            self._NumRevisions=None
+
+    @property
+    def Pageid(self) -> Optional[int]:
+        return self._Pageid
+    @Pageid.setter
+    def Pageid(self, val: Union[str, int]):
+        if isinstance(val, int):
+            self._Pageid=val
+        elif isinstance(val, str):
+            if IsInt(val):
+                self._Pageid=int(val)
+            else:
+                Log("F3Page.Pageid setter: not an int: '"+val+"'", isError=True)
+        else:
+            self._Pageid=None
+
+    @property
+    def Revid(self) -> Optional[int]:
+        return self._Revid
+    @Revid.setter
+    def Revid(self, val: Union[str, int]):
+        if isinstance(val, int):
+            self._Revid=val
+        elif isinstance(val, str):
+            if IsInt(val):
+                self._Revid=int(val)
+            else:
+                Log("F3Page.Revid setter: not an int: '"+val+"'", isError=True)
+        else:
+            self._Revid=None
+
+    @property
+    def Edittime(self) -> Optional[str]:
+        return self._Edittime
+    @Edittime.setter
+    def Edittime(self, val: Optional[str]):
+        self._Edittime=val
+
+    @property
+    def Permalink(self) -> Optional[str]:
+        return self._Permalink
+    @Permalink.setter
+    def Permalink(self, val: Optional[str]):
+        self._Permalink=val
+
+    @property
+    def Timestamp(self) -> Optional[str]:
+        return self._Timestamp
+    @Timestamp.setter
+    def Timestamp(self, val: Optional[str]):
+        self._Timestamp=val
+
+    @property
+    def User(self) -> Optional[str]:
+        return self._User
+    @User.setter
+    def User(self, val: Optional[str]):
+        self._User=val
+
+    @property
+    def WindowsFilename(self) -> Optional[str]:
+        return self._WindowsFilename
+    @WindowsFilename.setter
+    def WindowsFilename(self, val: Optional[str]):
+        self._WindowsFilename=val
+
+    @property
+    def Categories(self) -> Optional[str]:
+        return self._Categories
+    @Categories.setter
+    def Categories(self, val: Optional[str]):
+        self._Categories=val

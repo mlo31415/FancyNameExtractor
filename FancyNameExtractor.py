@@ -3,6 +3,7 @@ from typing import Optional, Dict
 
 import os
 from html import unescape
+import xml.etree.ElementTree as ET
 
 from Reference import Reference
 from F3Page import F3Page
@@ -23,11 +24,15 @@ from HelpersPackage import WindowsFilenameToWikiPagename, WikiPagenameToWikiUrln
 
 # We'll work entirely on the local copies of the two sites.
 
-# For Fancy 3 on MediaWiki, there are four names to keep track of for each page:
-#       The name of the page: free text
-#       The name on MediaWiki: Basically, spaces are replaced by underscores and the first character is always UC
-#       The name in the local site: converted using methods in HelperPackage. These names and be dreived from the page name and vice-versa.
-#       The display name in MediaWiki: Normally the name of the page, but can be overridden on the page using DISPLAYTITLE
+# For Fancy 3 on MediaWiki, there are many names to keep track of for each page:
+#       The actual, real-world name.  But this can't always be used for a filename on Windows or a page name in Mediawiki, so:
+#       WikiPagename -- the name of the MediaWiki page it was created with and as it appears in a simple Mediawiki link.
+#       URLname -- the name of the Mediawiki page in a URL
+#                       Basically, spaces are replaced by underscores and the first character is always UC.  #TODO: What about colons? Other special characters?
+#       WindowsFilename -- the name of the Windows file in the in the local site: converted using methods in HelperPackage. These names can be derived from the Mediawiki page name and vice-versa.
+#       WikiDisplayname -- the display name in MediaWiki: Normally the name of the page, but can be overridden on the page using DISPLAYTITLE
+#
+#       The URLname and WindowsFilename can be derived from the WikiPagename, but not necessarily vice-versa
 
 #TODO: Revise this
 
@@ -35,19 +40,57 @@ from HelpersPackage import WindowsFilenameToWikiPagename, WikiPagenameToWikiUrln
 # Read a page and return a FancyPage
 # pagePath will be the path to the page's source (i.e., ending in .txt)
 def DigestPage(sitepath: str, pagefname: str) ->Optional[F3Page]:
-    pagePath=os.path.join(sitepath, pagefname)+".txt"
 
-    if not os.path.isfile(pagePath):
-        Log("DigestPage: Couldn't find '"+pagePath+"'")
+    pagePathTxt=os.path.join(sitepath, pagefname)+".txt"
+    pagePathXml=os.path.join(sitepath, pagefname)+".xml"
+
+    if not os.path.isfile(pagePathTxt):
+        Log("DigestPage: Couldn't find '"+pagePathTxt+"'")
+        return None
+    if not os.path.isfile(pagePathXml):
+        Log("DigestPage: Couldn't find '"+pagePathXml+"'")
         return None
 
     fp=F3Page()
-    fp.Name=WindowsFilenameToWikiPagename(pagefname)
+
+    # Read the xml file
+    tree=ET.parse(pagePathXml)
+    root=tree.getroot()
+    for child in root:
+        if child.tag == "title":        # Must match tags set in FancyDownloader.SaveMetadata()
+            fp.Name=child.text
+        if child.tag == "filename":
+            fp._WikiFilename=child.text
+        if child.tag == "urlname":
+            fp.WikiUrlname=child.text
+        if child.tag == "isredirectpage":
+            fp.Isredirectpage=child.text
+        if child.tag == "numrevisions":
+            fp.NumRevisions=child.text
+        if child.tag == "pageid":
+            fp.Pageid=child.text
+        if child.tag == "revid":
+            fp.Revid=child.text
+        if child.tag == "editTime" or child.tag == "edittime":
+            fp.Edittime=child.text
+        if child.tag == "permalink":
+            fp.Permalink=child.text
+
+        if child.tag == "categories":
+            fp.Categories=child.text
+
+        if child.tag == "timestamp":
+            fp.Timestamp=child.text
+        if child.tag == "user":
+            fp.User=child.text
+
+    fp.WindowsFilename=pagefname
+
     Log("Page: "+fp.Name, Print=False)
-    fp.WikiUrlname=WikiPagenameToWikiUrlname(WindowsFilenameToWikiPagename(pagefname))
+    #fp.WikiUrlname=WikiPagenameToWikiUrlname(WindowsFilenameToWikiPagename(pagefname))
 
     # Open and read the page's source
-    with open(os.path.join(pagePath), "rb") as f:   # Reading in binary and doing the funny decode is to handle special characters embedded in some sources.
+    with open(os.path.join(pagePathTxt), "rb") as f:   # Reading in binary and doing the funny decode is to handle special characters embedded in some sources.
         source=f.read().decode("utf8") # decode("cp437") is magic to handle funny foreign characters
     if len(source) == 0:
         return None
@@ -132,6 +175,8 @@ fancyPagesDictByWikiname={}     # Key is page's canname; Val is a FancyPage clas
 
 Log("***Scanning local copies of pages for links")
 for pageFname in allFancy3PagesFnames:
+    if pageFname.startswith("Log 202"):     # Ignore Log files in the site directory
+        continue
     val=DigestPage(fancySitePath, pageFname)
     if val is not None:
         fancyPagesDictByWikiname[val.Name]=val
@@ -148,14 +193,14 @@ Log("***Computing redirect structure")
 # Run through the pages and fill in UltimateRedirect.
 def GetUltimateRedirect(fancyPagesDictByWikiname: Dict[str, F3Page], redirect: str) -> str:
     assert redirect is not None
-    redirectFilename=WikiPagenameToWikiUrlname(redirect)
-    if redirectFilename not in fancyPagesDictByWikiname.keys():  # Target of redirect does not exist, so this redirect is the ultimate redirect
+    if redirect not in fancyPagesDictByWikiname.keys():  # Target of redirect does not exist, so this redirect is the ultimate redirect
         return redirect
-    if fancyPagesDictByWikiname[redirectFilename] is None:       # Target of redirect does not exist, so this redirect is the ultimate redirect
+    if fancyPagesDictByWikiname[redirect] is None:       # Target of redirect does not exist, so this redirect is the ultimate redirect
         return redirect
-    if fancyPagesDictByWikiname[redirectFilename].Redirect is None: # Target is a real page, so that real page is the ultimate redirect
-        return fancyPagesDictByWikiname[redirectFilename].Name #TODO: Confirm that name is actually what we want here...
-    return GetUltimateRedirect(fancyPagesDictByWikiname, fancyPagesDictByWikiname[redirectFilename].Redirect)
+    if fancyPagesDictByWikiname[redirect].Redirect is None: # Target is a real page, so that real page is the ultimate redirect
+        return fancyPagesDictByWikiname[redirect].Name
+
+    return GetUltimateRedirect(fancyPagesDictByWikiname, fancyPagesDictByWikiname[redirect].Redirect)
 
 # Fill in the UltimateRedirect element
 num=0
@@ -169,17 +214,17 @@ Log("   "+str(num)+" redirects found", Print=False)
 # Build up a dictionary of redirects.  It is indexed by the canonical name of a page and the value is the canonical name of the ultimate redirect
 # Build up an inverse list of all the pages that redirect *to* a given page, also indexed by the page's canonical name. The value here is a list of canonical names.
 redirects={}            # Key is the name of a redirect; value is the ultimate destination
-inverseRedirects={}     # Key is the destination, value is a list of pages that redirect to it
+inverseRedirects={}     # Key is the name of a destination page, value is a list of names of pages that redirect to it
 for fancyPage in fancyPagesDictByWikiname.values():
     if fancyPage.Redirect is not None:
-        if fancyPage.Redirect is not None:
+        if fancyPage.Redirect is not None:  # A page has an UltimateRedirect iff it has a Redirect
             assert fancyPage.UltimateRedirect is not None
         else:
             assert fancyPage.UltimateRedirect is None
         redirects[fancyPage.Name]=fancyPage.UltimateRedirect
         if fancyPage.Redirect not in inverseRedirects.keys():
             inverseRedirects[fancyPage.Redirect]=[]
-        inverseRedirects[fancyPage.Redirect].append(fancyPage.WikiUrlname)
+        inverseRedirects[fancyPage.Redirect].append(fancyPage.Name)
         if fancyPage.UltimateRedirect not in inverseRedirects.keys():
             inverseRedirects[fancyPage.UltimateRedirect]=[]
         if fancyPage.UltimateRedirect != fancyPage.Redirect:
@@ -249,12 +294,14 @@ peopleNames=[]
 # First make a list of all the pages labelled as "fan" or "pro"
 for fancyPage in fancyPagesDictByWikiname.values():
     if fancyPage.IsPerson():
-        peopleNames.append(fancyPage.DisplayTitle)
+        peopleNames.append(fancyPage.Name)
         # Then all the redirects to one of those pages.
-        pagename=fancyPage.Name
-        if pagename in inverseRedirects.keys():
-            for p in inverseRedirects[pagename]:
-                peopleNames.append(p)
+        if fancyPage.Name in inverseRedirects.keys():
+            for p in inverseRedirects[fancyPage.Name]:
+                if p in fancyPagesDictByWikiname.keys():
+                    peopleNames.append(fancyPagesDictByWikiname[p].UltimateRedirect)
+                else:
+                    Log("Generating Peoples names.txt: "+p+" is not in fancyPagesDictByWikiname")
 
 # De-dupe it
 peopleNames=list(set(peopleNames))
