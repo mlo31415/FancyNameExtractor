@@ -4,6 +4,7 @@ from typing import Optional, Dict
 import os
 from html import unescape
 import xml.etree.ElementTree as ET
+import re
 
 from Reference import Reference
 from F3Page import F3Page
@@ -289,28 +290,30 @@ with open("Redirects with missing target.txt", "w+", encoding='utf-8') as f:
 
 
 # Create and write out a file of peoples' names. They are taken from the titles of pages marked as fan or pro
+
+# Ambiguous names will often end with something in parenthesis which need to be removed for this particular file
+def RemoveTrailingParens(s: str) -> str:
+    return re.sub("\s\(.*\)$", "", s)       # Delete any trailing ()
+
 Log("Writing: Peoples names.txt")
 peopleNames=[]
 # First make a list of all the pages labelled as "fan" or "pro"
 for fancyPage in fancyPagesDictByWikiname.values():
     if fancyPage.IsPerson():
-        peopleNames.append(fancyPage.Name)
+        peopleNames.append(RemoveTrailingParens(fancyPage.Name))
         # Then all the redirects to one of those pages.
         if fancyPage.Name in inverseRedirects.keys():
             for p in inverseRedirects[fancyPage.Name]:
                 if p in fancyPagesDictByWikiname.keys():
-                    peopleNames.append(fancyPagesDictByWikiname[p].UltimateRedirect)
+                    peopleNames.append(RemoveTrailingParens(fancyPagesDictByWikiname[p].UltimateRedirect))
                 else:
                     Log("Generating Peoples names.txt: "+p+" is not in fancyPagesDictByWikiname")
 
 # De-dupe it
 peopleNames=list(set(peopleNames))
 
-# Sort it by the number of tokens in the name
-peopleNames.sort(key=lambda n: len(n.split()), reverse=True)
-
 with open("Peoples names.txt", "w+", encoding='utf-8') as f:
-    peopleNames.sort(key=lambda p: p.split()[-1]+" "+" ".join(p.split()[0:-1]))
+    peopleNames.sort(key=lambda p: p.split()[-1][0].upper()+p.split()[-1][1:]+","+" ".join(p.split()[0:-1]))    # Invert so that last name is first and make initial letter UC.
     for name in peopleNames:
         f.write(name+"\n")
 i=0
