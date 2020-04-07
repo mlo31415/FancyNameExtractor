@@ -2,14 +2,13 @@ from __future__ import annotations
 from typing import Optional, Dict
 
 import os
-from html import unescape
 import xml.etree.ElementTree as ET
 import re
 
 from Reference import Reference
 from F3Page import F3Page
 from Log import Log, LogOpen
-from HelpersPackage import WindowsFilenameToWikiPagename, WikiPagenameToWikiUrlname, WikiUrlnameToWikiPagename, SearchAndReplace, WikiRedirectToPagename
+from HelpersPackage import WindowsFilenameToWikiPagename, WikiUrlnameToWikiPagename, SearchAndReplace, WikiRedirectToPagename
 
 # The goal of this program is to produce an index to all of the names on Fancy 3 and fanac.org with links to everything interesting about them.
 # We'll construct a master list of names with a preferred name and zero or more variants.
@@ -183,11 +182,6 @@ for pageFname in allFancy3PagesFnames:
         fancyPagesDictByWikiname[val.Name]=val
 Log("   "+str(len(fancyPagesDictByWikiname))+" semi-unique links found")
 
-# Log("***Create: Canonical names to real names.txt")
-# with open("Canonical names to real names.txt", "w+", encoding='utf-8') as f:
-#     for canon, title in fancyWikiFilenameToTitle.items():
-#         if not canon.startswith("system_"):     #TODO: Is this still needed in Mediawiki? Or something else?
-#             f.write(canon+" --> "+title+"\n")
 
 Log("***Computing redirect structure")
 # A FancyPage has an UltimateRedirect which can only be filled in once all the redirects are known.
