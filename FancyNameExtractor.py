@@ -289,19 +289,37 @@ with open("Redirects with missing target.txt", "w+", encoding='utf-8') as f:
 def RemoveTrailingParens(s: str) -> str:
     return re.sub("\s\(.*\)$", "", s)       # Delete any trailing ()
 
+# Some names are not worth adding to the list of people names.  Try to detect them.
+def IsInterestingName(p: str) -> bool:
+    if " " not in p and "-" in p:   # We want to ignore names like "Bob-Tucker" in favor of "Bob Tucker"
+        return False
+    if " " in p:                    # If there are spaces in the name, at least one of them needs to be followed by a UC letter
+        if re.search(" ([A-Z]|de|ha|de|von|Č)", p) is None:  # We want to ignore "Bob tucker"
+            return False
+    return True
+
+
 Log("Writing: Peoples names.txt")
 peopleNames=[]
 # First make a list of all the pages labelled as "fan" or "pro"
-for fancyPage in fancyPagesDictByWikiname.values():
-    if fancyPage.IsPerson():
-        peopleNames.append(RemoveTrailingParens(fancyPage.Name))
-        # Then all the redirects to one of those pages.
-        if fancyPage.Name in inverseRedirects.keys():
-            for p in inverseRedirects[fancyPage.Name]:
-                if p in fancyPagesDictByWikiname.keys():
-                    peopleNames.append(RemoveTrailingParens(fancyPagesDictByWikiname[p].UltimateRedirect))
-                else:
-                    Log("Generating Peoples names.txt: "+p+" is not in fancyPagesDictByWikiname")
+with open("Peoples rejected names.txt", "w+", encoding='utf-8') as f:
+    for fancyPage in fancyPagesDictByWikiname.values():
+        if fancyPage.IsPerson():
+            peopleNames.append(RemoveTrailingParens(fancyPage.Name))
+            # Then all the redirects to one of those pages.
+            if fancyPage.Name in inverseRedirects.keys():
+                for p in inverseRedirects[fancyPage.Name]:
+                    if p in fancyPagesDictByWikiname.keys():
+                        peopleNames.append(RemoveTrailingParens(fancyPagesDictByWikiname[p].UltimateRedirect))
+                        if IsInterestingName(p):
+                            peopleNames.append(p)
+                        else:
+                            f.write("Uninteresting: "+p+"\n")
+                    else:
+                        Log("Generating Peoples names.txt: "+p+" is not in fancyPagesDictByWikiname")
+            else:
+                f.write(p+" Not in inverseRedirects.keys()\n")
+
 
 # De-dupe it
 peopleNames=list(set(peopleNames))
