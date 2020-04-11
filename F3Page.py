@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, List, Union
 
-from Reference import Reference
+from F3Reference import F3Reference
 
 from Log import Log
 from HelpersPackage import IsInt
@@ -18,7 +18,7 @@ class F3Page:
         self._UltimateRedirect: Optional[bool]=None                  # If this is a redirect page, the non-canonical name of the ultimate page that this chain of redirects leads to
         self._IsRedirectpage: Optional[str]=None
         self._Tags: Optional[List[str]]=None                        # A list of tags associated with this page
-        self._OutgoingReferences: Optional[List[Reference]]=None    # A list of all the references on this page
+        self._OutgoingReferences: Optional[List[F3Reference]]=None    # A list of all the references on this page
         self._WikiUrlname: Optional[str]=None
         self._NumRevisions: Optional[int]=None
         self._Pageid: Optional[str]=None
@@ -105,7 +105,7 @@ class F3Page:
         self._Tags=val
 
     @property
-    def OutgoingReferences(self) -> List[Reference]:
+    def OutgoingReferences(self) -> List[F3Reference]:
         return self._OutgoingReferences
     @OutgoingReferences.setter
     def OutgoingReferences(self, val: Optional[str]):

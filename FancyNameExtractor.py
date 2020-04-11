@@ -5,7 +5,7 @@ import os
 import xml.etree.ElementTree as ET
 import re
 
-from Reference import Reference
+from F3Reference import F3Reference
 from F3Page import F3Page
 from Log import Log, LogOpen
 from HelpersPackage import WindowsFilenameToWikiPagename, WikiUrlnameToWikiPagename, SearchAndReplace, WikiRedirectToPagename
@@ -125,7 +125,7 @@ def DigestPage(sitepath: str, pagefname: str) ->Optional[F3Page]:
     # Extract the simple links
     lnks1, source=SearchAndReplace("\[\[([^\|\[\]]+?)\]\]", source, "") # Look for [[stuff]] where stuff does not contain any '|'s '['s or ']'s
     for linktext in lnks1:
-        links.add(Reference(LinkDisplayText=linktext.strip(), ParentPageName=pagefname, LinkWikiName=WikiUrlnameToWikiPagename(linktext.strip())))
+        links.add(F3Reference(LinkDisplayText=linktext.strip(), ParentPageName=pagefname, LinkWikiName=WikiUrlnameToWikiPagename(linktext.strip())))
         Log("  Link: '"+linktext+"'", Print=False)
 
     # Now extract the links containing a '|' and add them to the set of outpur References
@@ -137,7 +137,7 @@ def DigestPage(sitepath: str, pagefname: str) ->Optional[F3Page]:
             linktext=linktext.split("|")
             if len(linktext) > 2:
                 Log("Page("+pagefname+") has a link '"+"|".join(linktext)+"' with more than two components", isError=True)
-            links.add(Reference(LinkDisplayText=linktext[1].strip(), ParentPageName=pagefname, LinkWikiName=WikiUrlnameToWikiPagename(linktext[0].strip())))
+            links.add(F3Reference(LinkDisplayText=linktext[1].strip(), ParentPageName=pagefname, LinkWikiName=WikiUrlnameToWikiPagename(linktext[0].strip())))
         else:
             Log("***Page("+pagefname+"}: No '|' found in alleged double link: '"+linktext+"'", isError=True)
 

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from HelpersPackage import WindowsFilenameToWikiPagename
 
 @dataclass(order=False)
-class Reference:
+class F3Reference:
     def __init__(self, LinkWikiName: Optional[str]=None, LinkDisplayText: Optional[str]=None, ParentPageName: Optional[str]=None, FanacURL: Optional[str]=None) -> None:
         self._LinkWikiName=LinkWikiName         # The wiki name of the page being linked to if it is a link to Fancy 3 (else None)
                                                 # Note that this not the wiki page's canonical name.
@@ -15,7 +15,7 @@ class Reference:
         self._FanacURL=FanacURL                 # If a reference to fanac.org, the URL of the page it was on (else None)
 
     def Copy(self, val):
-        if type(val) is Reference:
+        if type(val) is F3Reference:
             self._LinkWikiName=val.LinkWikiName
             self._LinkDisplayText=val.LinkText
             self._ParentPageName=val.ParentPageName
