@@ -103,11 +103,17 @@ for page in fancyPagesDictByWikiname.values():
                     if fdr.IsEmpty():
                         Log("***Could not interpret "+row[concol]+"'s date range: "+row[datecol])
                     else:
-                        conventions.append((row[concol], fdr._startdate))
+                        conventions.append((row[concol], fdr))
 
 
-    # Sort into date order
-    conventions.sort(key=lambda d: d[1])
+# Sort into date order
+conventions.sort(key=lambda d: d[1]._startdate)
+
+# List the conventions
+Log("Writing: Convention timeline.txt")
+with open("Convention timeline.txt", "w+", encoding='utf-8') as f:
+    for con in conventions:
+        f.write(str(con[1])+": "+str(con[0])+"\n")
 
 Log("***Computing redirect structure")
 # A FancyPage has an UltimateRedirect which can only be filled in once all the redirects are known.
