@@ -2,13 +2,12 @@ from __future__ import annotations
 from typing import Optional, Dict
 
 import os
-import xml.etree.ElementTree as ET
 import re
 
-from F3Reference import F3Reference
-from F3Page import F3Page
+from F3Page import F3Page, DigestPage
 from Log import Log, LogOpen
-from HelpersPackage import WindowsFilenameToWikiPagename, WikiUrlnameToWikiPagename, SearchAndReplace, WikiRedirectToPagename
+from HelpersPackage import WindowsFilenameToWikiPagename, SearchAndReplace
+from FanzineIssueSpecPackage import FanzineDateRange, FanzineDate
 
 # The goal of this program is to produce an index to all of the names on Fancy 3 and fanac.org with links to everything interesting about them.
 # We'll construct a master list of names with a preferred name and zero or more variants.
@@ -35,115 +34,6 @@ from HelpersPackage import WindowsFilenameToWikiPagename, WikiUrlnameToWikiPagen
 #       The URLname and WindowsFilename can be derived from the WikiPagename, but not necessarily vice-versa
 
 #TODO: Revise this
-
-#*******************************************************
-# Read a page and return a FancyPage
-# pagePath will be the path to the page's source (i.e., ending in .txt)
-def DigestPage(sitepath: str, pagefname: str) ->Optional[F3Page]:
-
-    pagePathTxt=os.path.join(sitepath, pagefname)+".txt"
-    pagePathXml=os.path.join(sitepath, pagefname)+".xml"
-
-    if not os.path.isfile(pagePathTxt):
-        Log("DigestPage: Couldn't find '"+pagePathTxt+"'")
-        return None
-    if not os.path.isfile(pagePathXml):
-        Log("DigestPage: Couldn't find '"+pagePathXml+"'")
-        return None
-
-    fp=F3Page()
-
-    # Read the xml file
-    tree=ET.parse(pagePathXml)
-    root=tree.getroot()
-    for child in root:
-        if child.tag == "title":        # Must match tags set in FancyDownloader.SaveMetadata()
-            fp.Name=child.text
-        if child.tag == "filename":
-            fp._WikiFilename=child.text
-        if child.tag == "urlname":
-            fp.WikiUrlname=child.text
-        if child.tag == "isredirectpage":
-            fp.Isredirectpage=child.text
-        if child.tag == "numrevisions":
-            fp.NumRevisions=child.text
-        if child.tag == "pageid":
-            fp.Pageid=child.text
-        if child.tag == "revid":
-            fp.Revid=child.text
-        if child.tag == "editTime" or child.tag == "edittime":
-            fp.Edittime=child.text
-        if child.tag == "permalink":
-            fp.Permalink=child.text
-
-        if child.tag == "categories":
-            fp.Categories=child.text
-
-        if child.tag == "timestamp":
-            fp.Timestamp=child.text
-        if child.tag == "user":
-            fp.User=child.text
-
-    fp.WindowsFilename=pagefname
-
-    Log("Page: "+fp.Name, Print=False)
-    #fp.WikiUrlname=WikiPagenameToWikiUrlname(WindowsFilenameToWikiPagename(pagefname))
-
-    # Open and read the page's source
-    with open(os.path.join(pagePathTxt), "rb") as f:   # Reading in binary and doing the funny decode is to handle special characters embedded in some sources.
-        source=f.read().decode("utf8") # decode("cp437") is magic to handle funny foreign characters
-    if len(source) == 0:
-        return None
-
-    found, source=SearchAndReplace("^{{DISPLAYTITLE:\s*(.+?)\}\}", source, "") # Note use of lazy quantifier
-    if len(found) == 1:
-        fp.DisplayTitle=found[0]
-        Log("  DISPLAYTITLE found: '"+found[0]+"'", Print=False)
-
-    found, source=SearchAndReplace("\[\[Category:\s*(.+?)\]\]", source, "")
-    if len(found) > 0:
-        fp.Tags=found
-        Log("  Category(s) found:"+" | ".join(found), Print=False)
-
-    # If the page is a redirect, we're done.
-    found, source=SearchAndReplace("^#[Rr][Ee][Dd][Ii][Rr][Ee][Cc][Tt]\s*\[\[(.+?)\]\]", source, "")        # Ugly way to handle UC/lc, but it needs to be in the pattern
-    if len(found) == 1: # If we found a redirect, then there's no point in looking for links, also, so we're done.
-        fp.Redirect=WikiRedirectToPagename(found[0])
-        Log("  Redirect found: '"+found[0]+"'", Print=False)
-        return fp
-
-    # Some kinds of wiki markup show up as [[html]]...[[/html]] and we want to ignore all this
-    found, source=SearchAndReplace('\[\[html\]\].*?\[\[/html\]\]', source, "", numGroups=0)
-
-    # Now we scan the source for outgoing links.
-    # A link is one of these formats:
-    #   [[link]]
-    #   [[link|display text]]
-
-    links=set()     # Start out with a set so we don't keep duplicates. Note that we have defined a Reference() hash function, so we can compare sets
-
-    # Extract the simple links
-    lnks1, source=SearchAndReplace("\[\[([^\|\[\]]+?)\]\]", source, "") # Look for [[stuff]] where stuff does not contain any '|'s '['s or ']'s
-    for linktext in lnks1:
-        links.add(F3Reference(LinkDisplayText=linktext.strip(), ParentPageName=pagefname, LinkWikiName=WikiUrlnameToWikiPagename(linktext.strip())))
-        Log("  Link: '"+linktext+"'", Print=False)
-
-    # Now extract the links containing a '|' and add them to the set of outpur References
-    lnks2, source=SearchAndReplace("\[\[([^\|\[\]]\|[^\|\[\]]+?)\]\]", source, "") # Look for [[stuff|morestuff]] where stuff and morestuff does not contain any '|'s '['s or ']'s
-    for linktext in lnks2:  # Process the links of the form [[xxx|yyy]]
-        Log("  Link: '"+linktext+"'", Print=False)
-        # Now look at the possibility of the link containing display text.  If there is a "|" in the link, then only the text to the left of the "|" is the link
-        if "|" in linktext:
-            linktext=linktext.split("|")
-            if len(linktext) > 2:
-                Log("Page("+pagefname+") has a link '"+"|".join(linktext)+"' with more than two components", isError=True)
-            links.add(F3Reference(LinkDisplayText=linktext[1].strip(), ParentPageName=pagefname, LinkWikiName=WikiUrlnameToWikiPagename(linktext[0].strip())))
-        else:
-            Log("***Page("+pagefname+"}: No '|' found in alleged double link: '"+linktext+"'", isError=True)
-
-    fp.OutgoingReferences=list(links)       # We need to turn the set into a list
-    return fp
-
 
 # There will be a dictionary, nameVariants, indexed by every form of every name. The value will be the canonical form of the name.
 # There will be a second dictionary, people, indexed by the canonical name and containing an unordered list of Reference structures
@@ -182,6 +72,42 @@ for pageFname in allFancy3PagesFnames:
         fancyPagesDictByWikiname[val.Name]=val
 Log("   "+str(len(fancyPagesDictByWikiname))+" semi-unique links found")
 
+# Analyze the conseries pages and extract conventions from it
+Log("***Analyzing convention series tables")
+conventions=[]
+for page in fancyPagesDictByWikiname.values():
+    if "Conseries" in page.Categories:
+        if page.Table is not None:
+            if "Convention" in page.Table.Headers:
+                concol=page.Table.Headers.index("Convention")
+            elif "Name" in page.Table.Headers:
+                concol=page.Table.Headers.index("Name")
+            else:
+                Log("***No column 'Convention(s)' in conseries "+page.Name, isError=True)
+                continue
+
+            if "Date" in page.Table.Headers:
+                datecol=page.Table.Headers.index("Date")
+            elif "Dates" in page.Table.Headers:
+                datecol=page.Table.Headers.index("Dates")
+            else:
+                Log("***No column 'Date(s)' in conseries "+page.Name, isError=True)
+                continue
+
+            for row in page.Table.Rows:
+                if concol < len(row) and len(row[concol]) > 0  and datecol < len(row) and len(row[datecol]) > 0:
+                    # Ignore anything in trailing parenthesis
+                    p=re.compile("\(.*\)\s?$")
+                    datestr=p.sub("", row[datecol])
+                    fdr=FanzineDateRange().Match(datestr)
+                    if fdr.IsEmpty():
+                        Log("***Could not interpret "+row[concol]+"'s date range: "+row[datecol])
+                    else:
+                        conventions.append((row[concol], fdr._startdate))
+
+
+    # Sort into date order
+    conventions.sort(key=lambda d: d[1])
 
 Log("***Computing redirect structure")
 # A FancyPage has an UltimateRedirect which can only be filled in once all the redirects are known.
@@ -294,7 +220,7 @@ def IsInterestingName(p: str) -> bool:
     if " " not in p and "-" in p:   # We want to ignore names like "Bob-Tucker" in favor of "Bob Tucker"
         return False
     if " " in p:                    # If there are spaces in the name, at least one of them needs to be followed by a UC letter
-        if re.search(" ([A-Z]|de|ha|de|von|Č)", p) is None:  # We want to ignore "Bob tucker"
+        if re.search(" ([A-Z]|de|ha|von|Č)", p) is None:  # We want to ignore "Bob tucker"
             return False
     return True
 
