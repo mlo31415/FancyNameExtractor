@@ -74,7 +74,7 @@ Log("   "+str(len(fancyPagesDictByWikiname))+" semi-unique links found")
 
 # Analyze the conseries pages and extract conventions from it
 Log("***Analyzing convention series tables")
-conventions=[]
+conventions={}  # We use a dictionary to eliminate duplicates
 for page in fancyPagesDictByWikiname.values():
     if "Conseries" in page.Categories:
         if page.Table is not None:
@@ -103,10 +103,11 @@ for page in fancyPagesDictByWikiname.values():
                     if fdr.IsEmpty():
                         Log("***Could not interpret "+row[concol]+"'s date range: "+row[datecol])
                     else:
-                        conventions.append((row[concol], fdr))
+                        conventions[row[concol].lower()+str(fdr._startdate.Year)]=((row[concol], fdr))      # We merge conventions with the same name and year
 
 
-# Sort into date order
+# Convert the con dictionary to a list and sort it in date order
+conventions=[c for c in conventions.values()]
 conventions.sort(key=lambda d: d[1]._startdate)
 
 # List the conventions
