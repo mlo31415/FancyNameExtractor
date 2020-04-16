@@ -116,6 +116,25 @@ with open("Convention timeline.txt", "w+", encoding='utf-8') as f:
     for con in conventions:
         f.write(str(con[1])+": "+str(con[0])+"\n")
 
+Log("Writing Convention timeline (Fancy).txt")
+with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
+    currentYear=None
+    currentDateRange=None
+    f.write("<tab>\n")
+    for con in conventions:
+        if currentYear == con[1]._startdate.Year:
+            if currentDateRange == con[1]:
+                f.write("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' ' ||"+str(con[0])+"\n")
+            else:
+                f.write(str(con[1])+"||"+str(con[0])+"\n")
+                currentDateRange=con[1]
+        else:
+            currentYear = con[1]._startdate.Year
+            currentDateRange=con[1]
+            f.write('colspan="2"| '+"<big><big>'''"+str(currentYear)+"'''</big></big>\n")
+            f.write(str(con[1])+"||"+str(con[0])+"\n")
+    f.write("</tab>")
+
 Log("***Computing redirect structure")
 # A FancyPage has an UltimateRedirect which can only be filled in once all the redirects are known.
 # Run through the pages and fill in UltimateRedirect.
