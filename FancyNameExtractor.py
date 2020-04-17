@@ -77,6 +77,7 @@ Log("***Analyzing convention series tables")
 conventions={}  # We use a dictionary to eliminate duplicates
 for page in fancyPagesDictByWikiname.values():
     if "Conseries" in page.Categories:
+        Log("Processing conseries "+page.Name)
         if page.Table is not None:
             if "Convention" in page.Table.Headers:
                 concol=page.Table.Headers.index("Convention")
@@ -108,7 +109,7 @@ for page in fancyPagesDictByWikiname.values():
 
 # Convert the con dictionary to a list and sort it in date order
 conventions=[c for c in conventions.values()]
-conventions.sort(key=lambda d: d[1]._startdate)
+conventions.sort(key=lambda d: d[1])
 
 # List the conventions
 Log("Writing: Convention timeline.txt")
