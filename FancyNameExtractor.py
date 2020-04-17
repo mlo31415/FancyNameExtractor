@@ -104,6 +104,8 @@ for page in fancyPagesDictByWikiname.values():
                     if fdr.IsEmpty():
                         Log("***Could not interpret "+row[concol]+"'s date range: "+row[datecol])
                     else:
+                        if fdr.Duration() > 6:
+                            Log("??? "+page.Name+" has long duration: "+str(fdr))
                         conventions[row[concol].lower()+str(fdr._startdate.Year)]=((row[concol], fdr))      # We merge conventions with the same name and year
 
 
