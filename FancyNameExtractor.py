@@ -5,7 +5,7 @@ import os
 import re
 
 from F3Page import F3Page, DigestPage
-from Log import Log, LogOpen
+from Log import Log, LogOpen, LogSetHeader
 from HelpersPackage import WindowsFilenameToWikiPagename, SearchAndReplace
 from FanzineIssueSpecPackage import FanzineDateRange, FanzineDate
 
@@ -77,7 +77,7 @@ Log("***Analyzing convention series tables")
 conventions={}  # We use a dictionary to eliminate duplicates
 for page in fancyPagesDictByWikiname.values():
     if "Conseries" in page.Categories:
-        Log("Processing conseries "+page.Name)
+        LogSetHeader("Processing conseries "+page.Name)
         if page.Table is not None:
             if "Convention" in page.Table.Headers:
                 concol=page.Table.Headers.index("Convention")
