@@ -107,6 +107,7 @@ for fancyPage in fancyPagesDictByWikiname.values():
         fancyPage.UltimateRedirect=UltimateRedirectName(fancyPagesDictByWikiname, fancyPage.Redirect)
 Log("   "+str(num)+" redirects found", Print=False)
 
+
 # Build a locale database
 Log("\n\n***Building a locale dictionary")
 locales=set()  # We use a set to eliminate duplicates and to speed checks
@@ -119,6 +120,25 @@ for page in fancyPagesDictByWikiname.values():
             if "Locale" in fancyPagesDictByWikiname[page.UltimateRedirect].Categories:
                 LogSetHeader("Processing Locale "+page.Name)
                 locales.add(page.Name)
+
+
+# Convert names like "Chicago" to "Chicago, IL"
+# We look through the locales database for names that are proper extensions of the input name
+# First create the dictionary we'll need
+localeBaseForms={}  # It's defined as a dictionary with the value being the base form of the key
+for locale in locales:
+    # Look for names of the form Name,ST
+    m=re.match("^([A-Za-z .]*)\,\s([A-Z]{2})$", locale)
+    if m is not None:
+        city=m.groups()[0]
+        state=m.groups()[1]
+        if city not in localeBaseForms.keys():
+            localeBaseForms[city]=city+", "+state
+i=0
+def BaseFormOfLocaleName(localeBaseForms: Dict[str, str], name: str) -> str:
+    if name in localeBaseForms.keys():
+        return localeBaseForms[name]
+    return name
 
 
 # Look for a pattern of the form:
@@ -165,7 +185,7 @@ def ScanForLocales(locales: Set[str], s: str) -> Optional[Set[str]]:
             # ending with "]]"
     lst=re.findall(pattern, s)
     for l in lst:
-        out.add(l)
+        out.add(BaseFormOfLocaleName(localeBaseForms, l))
     return out
 
 
@@ -199,7 +219,7 @@ for page in fancyPagesDictByWikiname.values():
                     if con not in conventionLocations.keys():
                         conventionLocations[con]=set()
                     loc=StripBrackets(row[loccol])
-                    conventionLocations[con].add(loc)
+                    conventionLocations[con].add(BaseFormOfLocaleName(localeBaseForms,loc))
                     Log("   Conseries: add="+loc+" to "+con)
 
     # If it's an individual convention page, we search through its text for something that looks like a placename.
@@ -210,7 +230,7 @@ for page in fancyPagesDictByWikiname.values():
                 place=StripBrackets(place)
                 if page.Name not in conventionLocations.keys():
                     conventionLocations[page.Name]=set()
-                conventionLocations[page.Name].add(place)
+                conventionLocations[page.Name].add(BaseFormOfLocaleName(localeBaseForms,place))
                 Log("   Convention: add="+place)
                 if page.Name != UltimateRedirectName(fancyPagesDictByWikiname, page.Name):
                     Log("^^^Redirect issue: "+page.Name+" != "+UltimateRedirectName(fancyPagesDictByWikiname, page.Name))
