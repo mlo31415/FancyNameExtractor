@@ -230,11 +230,11 @@ for page in fancyPagesDictByWikiname.values():
             for place in m:
                 place=StripBrackets(place)
                 if page.Name not in conventionLocations.keys():
-                    conventionLocations[page.Name]=set()
-                conventionLocations[page.Name].add(BaseFormOfLocaleName(localeBaseForms,place))
+                    conventionLocations[page.UltimateRedirect]=set()
+                conventionLocations[page.UltimateRedirect].add(BaseFormOfLocaleName(localeBaseForms,place))
                 Log("   Convention: add="+place)
-                if page.Name != UltimateRedirectName(fancyPagesDictByWikiname, page.Name):
-                    Log("^^^Redirect issue: "+page.Name+" != "+UltimateRedirectName(fancyPagesDictByWikiname, page.Name))
+                if page.Name != page.UltimateRedirect:
+                    Log("^^^Redirect issue: "+page.Name+" != "+page.UltimateRedirect)
 
 # Analyze the conseries pages and extract conventions from it
 Log("***Analyzing convention series tables")
@@ -374,10 +374,6 @@ redirects={}            # Key is the name of a redirect; value is the ultimate d
 inverseRedirects={}     # Key is the name of a destination page, value is a list of names of pages that redirect to it
 for fancyPage in fancyPagesDictByWikiname.values():
     if fancyPage.Redirect is not None:
-        if fancyPage.Redirect is not None:  # A page has an UltimateRedirect iff it has a Redirect
-            assert fancyPage.UltimateRedirect is not None
-        else:
-            assert fancyPage.UltimateRedirect is None
         redirects[fancyPage.Name]=fancyPage.UltimateRedirect
         if fancyPage.Redirect not in inverseRedirects.keys():
             inverseRedirects[fancyPage.Redirect]=[]
