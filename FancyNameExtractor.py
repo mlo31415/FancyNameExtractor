@@ -307,6 +307,8 @@ corrections={
     "Petersburg, FL": "St. Petersburg, FL",
     "Rosa, CA": "Santa Rosa, CA",
     "Spring, MD": "Silver Spring, MD",
+    "Luzerne, NY": "Lake Luzerne, NY",
+    "Springs, NY": "Saratoga Springs, NY",
     "Creek, MI": "Battle Creek, MI"
 }
 
