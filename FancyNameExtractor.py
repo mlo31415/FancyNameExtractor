@@ -125,7 +125,7 @@ for page in fancyPagesDictByWikiname.values():
 #   Word, XX
 #   where Word is a string of letters with an initial capital, the comma is optional, and XX is a pair of upper case letters
 # Note that this will also pick up roman-numeraled con names, E.g., Fantasycon XI, so we need to remove these later
-def ScanForLocales(locales: Set[str], s: str) -> Optional[List[str]]:
+def ScanForLocales(locales: Set[str], s: str) -> Optional[Set[str]]:
     pattern="in (?:[A-Za-z]* )?\[*([A-Z][a-z]+\]*,?\\s+[A-Z]{2})\]*[^a-zA-Z]"
             # (?:[A-Za-z]* )?   lets us ignore the "Oklahoma" of in Oklahoma City, OK)
             # \[*  and  \]*     Lets us ignore [[brackets]]
@@ -135,12 +135,12 @@ def ScanForLocales(locales: Set[str], s: str) -> Optional[List[str]]:
     lst=re.findall(pattern, " "+s+" ")
     impossiblestates={"SF", "MC", "PR", "II", "IV", "VI", "IX", "XI", "XX", "VL", "XL", "LI", "LV", "LX"}       # PR: Pogress Report; others Roman numerals
     skippers={"Astra", "Con"}       # Second word of multi-word con names
-    out=[]
+    out=set()
     for l in lst:
         splt=SplitOnSpan(",\s", l)
         if len(splt) == 2:
             if splt[0] not in skippers and splt[1] not in impossiblestates:
-                out.append(l)
+                out.add(l)
         else:
             Log("...Split does not find two values: "+l)
 
@@ -157,15 +157,15 @@ def ScanForLocales(locales: Set[str], s: str) -> Optional[List[str]]:
                 if re.match("in [A-Z]{1}[a-z]+$", name):
                     out+=name+", "+country
 
-    # Then there are the cities which don't have a state because they are so obvious. (E.g., "Boston")
-    # Look for [[City]] where City is a Locale
+    # Look for the pattern "in [[City Name]]"
     pattern="in \[\[((?:[A-Z][A-Za-z]+[\.,]?\s*)+)\]\]"
             # Capture "in" followed by "[[" followed by a group
             # The group is a possibly repeated non-capturing group
             #       which is a UC letter followed by one or more letters followed by an option period or comma followed by zero or more spaces
             # ending with "]]"
     lst=re.findall(pattern, s)
-    out+=[l for l in lst if l in locales]
+    for l in lst:
+        out.add(l)
     return out
 
 
