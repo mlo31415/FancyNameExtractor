@@ -302,8 +302,10 @@ corrections={
     "City, OK": "Oklahoma City, OK",
     "Lake, OH": "Indian Lake, OH",
     "Carrollton, MD": "New Carrollton, MD",
-    "Island, NY": "Long island, NY",
-    "Petersburg, FL": "St. etersburg, FL",
+    "Island, NY": "Long Island, NY",
+    "Petersburg, FL": "St. Petersburg, FL",
+    "Rosa, CA": "Santa Rosa, CA",
+    "Spring, MD": "Silver Spring, MD",
     "Creek, MI": "Battle Creek, MI"
 }
 
