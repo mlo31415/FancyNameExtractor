@@ -171,11 +171,12 @@ def ScanForLocales(locales: Set[str], s: str) -> Optional[Set[str]]:
     for country in countries:
         if country in s:
             loc=s.find(country)
-            splt=SplitOnSpan(",\s", s[:loc]) # Split on spans of "," and space
-            if len(splt) > 0:
-                name=splt[-1:][0]
-                if re.match("in [A-Z]{1}[a-z]+$", name):
-                    out+=name+", "+country
+            splt=SplitOnSpan(",\s\[\]", s[:loc]) # Split on spans of "," and space
+            if len(splt) > 1:
+                if splt[-2:-1][0] == "in":  # 2nd last token is "in"
+                    name=splt[-1:][0]
+                    if re.match("[A-Z]{1}[a-z]+$", name):
+                        out.add(name+", "+country)
 
     # Look for the pattern "in [[City Name]]"
     pattern="in \[\[((?:[A-Z][A-Za-z]+[\.,]?\s*)+)\]\]"
