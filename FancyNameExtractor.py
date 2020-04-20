@@ -1,13 +1,13 @@
 from __future__ import annotations
-from typing import Optional, Dict
+from typing import Optional, Dict, List, Set
 
 import os
 import re
 
 from F3Page import F3Page, DigestPage
 from Log import Log, LogOpen, LogSetHeader
-from HelpersPackage import WindowsFilenameToWikiPagename, SearchAndReplace
-from FanzineIssueSpecPackage import FanzineDateRange, FanzineDate
+from HelpersPackage import SplitOnSpan, WindowsFilenameToWikiPagename
+from FanzineIssueSpecPackage import FanzineDateRange
 
 # The goal of this program is to produce an index to all of the names on Fancy 3 and fanac.org with links to everything interesting about them.
 # We'll construct a master list of names with a preferred name and zero or more variants.
@@ -63,14 +63,157 @@ Log("   "+str(len(allFancy3PagesFnames))+" pages found")
 
 fancyPagesDictByWikiname={}     # Key is page's canname; Val is a FancyPage class containing all the references on the page
 
-Log("***Scanning local copies of pages for links")
+Log("***Reading local copies of pages and scanning for links")
 for pageFname in allFancy3PagesFnames:
     if pageFname.startswith("Log 202"):     # Ignore Log files in the site directory
         continue
     val=DigestPage(fancySitePath, pageFname)
     if val is not None:
         fancyPagesDictByWikiname[val.Name]=val
-Log("   "+str(len(fancyPagesDictByWikiname))+" semi-unique links found")
+    l=len(fancyPagesDictByWikiname)
+    if l%1000 == 0:
+        if l > 1000:
+            Log("--",noNewLine=True)
+        if l%20000 == 0:
+            Log("")
+        Log(str(l), noNewLine=True)
+Log("\n   "+str(len(fancyPagesDictByWikiname))+" semi-unique links found")
+
+# A FancyPage has an UltimateRedirect which can only be filled in once all the redirects are known.
+# Run through the pages and fill in UltimateRedirect.
+def UltimateRedirectName(fancyPagesDictByWikiname: Dict[str, F3Page], redirect: str) -> str:
+    assert redirect is not None
+    if redirect not in fancyPagesDictByWikiname.keys():  # Target of redirect does not exist, so this redirect is the ultimate redirect
+        return redirect
+    if fancyPagesDictByWikiname[redirect] is None:       # Target of redirect does not exist, so this redirect is the ultimate redirect
+        return redirect
+    if fancyPagesDictByWikiname[redirect].Redirect is None: # Target is a real page, so that real page is the ultimate redirect
+        return fancyPagesDictByWikiname[redirect].Name
+
+    return UltimateRedirectName(fancyPagesDictByWikiname, fancyPagesDictByWikiname[redirect].Redirect)
+
+def UltimateRedirectPage(fancyPagesDictByWikiname: Dict[str, F3Page], redirect: str) -> Optional[F3Page]:
+    redirect=UltimateRedirectName(fancyPagesDictByWikiname, redirect)
+    if redirect not in fancyPagesDictByWikiname.keys():
+        return None
+    return fancyPagesDictByWikiname[redirect]
+
+# Fill in the UltimateRedirect element
+Log("***Computing redirect structure")
+num=0
+for fancyPage in fancyPagesDictByWikiname.values():
+    if fancyPage.Redirect is not None:
+        num+=1
+        fancyPage.UltimateRedirect=UltimateRedirectName(fancyPagesDictByWikiname, fancyPage.Redirect)
+Log("   "+str(num)+" redirects found", Print=False)
+
+# Build a locale database
+Log("\n\n***Building a locale dictionary")
+locales=set()  # We use a set to eliminate duplicates and to speed checks
+for page in fancyPagesDictByWikiname.values():
+    if "Locale" in page.Categories:
+        LogSetHeader("Processing Locale "+page.Name)
+        locales.add(page.Name)
+    else:
+        if page.UltimateRedirect is not None and page.UltimateRedirect in fancyPagesDictByWikiname.keys():
+            if "Locale" in fancyPagesDictByWikiname[page.UltimateRedirect].Categories:
+                LogSetHeader("Processing Locale "+page.Name)
+                locales.add(page.Name)
+
+
+# Look for a pattern of the form:
+#   Word, XX
+#   where Word is a string of letters with an initial capital, the comma is optional, and XX is a pair of upper case letters
+# Note that this will also pick up roman-numeraled con names, E.g., Fantasycon XI, so we need to remove these later
+def ScanForLocales(locales: Set[str], s: str) -> Optional[List[str]]:
+    pattern="in (?:[A-Za-z]* )?\[*([A-Z][a-z]+\]*,?\\s+[A-Z]{2})\]*[^a-zA-Z]"
+            # (?:[A-Za-z]* )?   lets us ignore the "Oklahoma" of in Oklahoma City, OK)
+            # \[*  and  \]*     Lets us ignore [[brackets]]
+            # The "[^a-zA-Z]"   prohibits another letter following the putative state
+
+    # We test for characters on either side of the name, so make sure there are some... #TODO handle this more cleanly
+    lst=re.findall(pattern, " "+s+" ")
+    impossiblestates={"SF", "MC", "PR", "II", "IV", "VI", "IX", "XI", "XX", "VL", "XL", "LI", "LV", "LX"}       # PR: Pogress Report; others Roman numerals
+    skippers={"Astra", "Con"}       # Second word of multi-word con names
+    out=[]
+    for l in lst:
+        splt=SplitOnSpan(",\s", l)
+        if len(splt) == 2:
+            if splt[0] not in skippers and splt[1] not in impossiblestates:
+                out.append(l)
+        else:
+            Log("...Split does not find two values: "+l)
+
+    # That didn't work. Let's try country names that are spelled out.
+    # We'll look for a country name preceded by a Capitalized word
+    countries=["Australia", "New Zealand", "Canada", "Holland", "Netherlands", "Italy", "Gemany", "Norway", "Sweden", "Finland", "China", "Japan", "France", "Belgium",
+               "Poland", "Bulgaria", "Israel", "Russia", "Scotland", "Wales", "England", "Ireland"]
+    for country in countries:
+        if country in s:
+            loc=s.find(country)
+            splt=SplitOnSpan(",\s", s[:loc]) # Split on spans of "," and space
+            if len(splt) > 0:
+                name=splt[-1:][0]
+                if re.match("in [A-Z]{1}[a-z]+$", name):
+                    out+=name+", "+country
+
+    # Then there are the cities which don't have a state because they are so obvious. (E.g., "Boston")
+    # Look for [[City]] where City is a Locale
+    pattern="in \[\[((?:[A-Z][A-Za-z]+[\.,]?\s*)+)\]\]"
+            # Capture "in" followed by "[[" followed by a group
+            # The group is a possibly repeated non-capturing group
+            #       which is a UC letter followed by one or more letters followed by an option period or comma followed by zero or more spaces
+            # ending with "]]"
+    lst=re.findall(pattern, s)
+    out+=[l for l in lst if l in locales]
+    return out
+
+
+def StripBrackets(s: str) -> str:
+    s=s.replace("[[", "").replace("]]", "")
+    # If there's a "|" we ignore it and everything to its right, as it's a display name for the link
+    if "|" in s:
+        s=s.split("|")[0]
+    return s
+
+
+# Create a dictionary of convention locations
+# The key is the convention name. The value is a set of locations. (There should be only one, of course, but there may be more and we need to understand that so we can fix it)
+conventionLocations={}
+# First look through the con series pages looking for tables with a location column
+# Just collect the data. We'll clean it up later.
+Log("Beginning scanning for locations")
+for page in fancyPagesDictByWikiname.values():
+    LogSetHeader("Processing "+page.Name)
+    if "Conseries" in page.Categories:
+        if page.Table is not None:
+            if "Location" not in page.Table.Headers:
+                continue
+            loccol=page.Table.Headers.index("Location")
+            if "Convention" not in page.Table.Headers:
+                continue
+            concol=page.Table.Headers.index("Convention")
+            for row in page.Table.Rows:
+                if loccol < len(row) and len(row[loccol]) > 0 and concol < len(row) and len(row[concol]) > 0:
+                    con=StripBrackets(row[concol])
+                    if con not in conventionLocations.keys():
+                        conventionLocations[con]=set()
+                    loc=StripBrackets(row[loccol])
+                    conventionLocations[con].add(loc)
+                    Log("   Conseries: add="+loc+" to "+con)
+
+    # If it's an individual convention page, we search through its text for something that looks like a placename.
+    if "Convention" in page.Categories and "Conseries" not in page.Categories:
+        m=ScanForLocales(locales, page.Source)
+        if m is not None:
+            for place in m:
+                place=StripBrackets(place)
+                if page.Name not in conventionLocations.keys():
+                    conventionLocations[page.Name]=set()
+                conventionLocations[page.Name].add(place)
+                Log("   Convention: add="+place)
+                if page.Name != UltimateRedirectName(fancyPagesDictByWikiname, page.Name):
+                    Log("^^^Redirect issue: "+page.Name+" != "+UltimateRedirectName(fancyPagesDictByWikiname, page.Name))
 
 # Analyze the conseries pages and extract conventions from it
 Log("***Analyzing convention series tables")
@@ -113,6 +256,56 @@ for page in fancyPagesDictByWikiname.values():
 conventions=[c for c in conventions.values()]
 conventions.sort(key=lambda d: d[1])
 
+#TODO: Add a list of keywords to find and remove.  E.g. "Astra RR" ("Ad Astra XI")
+#TODO: Create a list of fixups for multi-word city names, e.g., "Station, TX" -> "College Station, TX", "Paul, MN" ->"St. Paul, MN", etc
+corrections={
+    "Paul, MN": "St. Paul, MN",
+    "Louis, MO": "St. Louis, MO",
+    "Station, TX": "College Station, TX",
+    "Bend, IN": "South Bend, IN",
+    "Angeles, CA": "Los Angeles, CA",
+    "Francisco, CA": "San Francisco, CA",
+    "Antonio, TX": "San Antonio, TX",
+    "Diego, CA": "San Diego, CA",
+    "Mateo, CA": "San Mateo, CA",
+    "Paso, TX": "El Paso, TX",
+    "York, NY": "New York, NY",
+    "City, MO": "Kansas City, MO",
+    "Beach, FL": "West Palm Beaach, FL",
+    "Orleans, LA": "New Orleans, LA",
+    "Juan, PR": "San Juan, PR",
+    "Moines, IA": "Des Moines, IA",
+    "Beach, CA": "Long Beach, CA",
+    "Collins, CO": "Fort Collins, CO",
+    "Hill, NJ": "Cherry Hill, NJ",
+    "Springs, CO": "Colorado Springs, CO",
+    "City, OK": "Oklahoma City, OK",
+    "Lake, OH": "Indian Lake, OH",
+    "Carrollton, MD": "New Carrollton, MD",
+    "Island, NY": "Long island, NY",
+    "Petersburg, FL": "St. etersburg, FL",
+    "Creek, MI": "Battle Creek, MI"
+}
+
+
+# Strip the convention names from the locations list.  (I.e., "Fantaycon XI" may look like a place, but it isn't.)
+# We need a list of convention names.  These names are in [[name]] or [[name|name2]] for, so remove the crud
+connames=[c[0].replace("[[", "").replace("]]","") for c in conventions]
+for conname, conlocs in conventionLocations.items():
+    newlocs=set()
+    for loc in conlocs:
+        if loc in corrections.keys():
+            loc=corrections[loc]
+        if loc not in connames:
+            newlocs.add(loc)
+    conventionLocations[conname]=newlocs
+
+Log("Writing: Convention locations.txt")
+with open("Convention locations.txt", "w+", encoding='utf-8') as f:
+    for con in conventionLocations.items():
+        f.write(str(con[0])+": "+str(con[1])+"\n")
+
+
 # List the conventions
 Log("Writing: Convention timeline.txt")
 with open("Convention timeline.txt", "w+", encoding='utf-8') as f:
@@ -125,40 +318,29 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
     currentDateRange=None
     f.write("<tab>\n")
     for con in conventions:
+        conname=StripBrackets(con[0])
+        conloc=""
+        if conname in conventionLocations.keys():
+            cl=conventionLocations[conname]
+            if len(cl) > 0:
+                for c in cl:
+                    if len(conloc) > 0:
+                        conloc+=", "
+                    conloc+=c
+        if len(conloc) > 0:
+            conloc="&nbsp;&nbsp;&nbsp;<small>("+conloc+")</small>"
         if currentYear == con[1]._startdate.Year:
             if currentDateRange == con[1]:
-                f.write("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' ' ||"+str(con[0])+"\n")
+                f.write("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' ' ||"+str(con[0])+conloc+"\n")
             else:
-                f.write(str(con[1])+"||"+str(con[0])+"\n")
+                f.write(str(con[1])+"||"+str(con[0])+conloc+"\n")
                 currentDateRange=con[1]
         else:
             currentYear = con[1]._startdate.Year
             currentDateRange=con[1]
             f.write('colspan="2"| '+"<big><big>'''"+str(currentYear)+"'''</big></big>\n")
-            f.write(str(con[1])+"||"+str(con[0])+"\n")
+            f.write(str(con[1])+"||"+str(con[0])+conloc+"\n")
     f.write("</tab>")
-
-Log("***Computing redirect structure")
-# A FancyPage has an UltimateRedirect which can only be filled in once all the redirects are known.
-# Run through the pages and fill in UltimateRedirect.
-def GetUltimateRedirect(fancyPagesDictByWikiname: Dict[str, F3Page], redirect: str) -> str:
-    assert redirect is not None
-    if redirect not in fancyPagesDictByWikiname.keys():  # Target of redirect does not exist, so this redirect is the ultimate redirect
-        return redirect
-    if fancyPagesDictByWikiname[redirect] is None:       # Target of redirect does not exist, so this redirect is the ultimate redirect
-        return redirect
-    if fancyPagesDictByWikiname[redirect].Redirect is None: # Target is a real page, so that real page is the ultimate redirect
-        return fancyPagesDictByWikiname[redirect].Name
-
-    return GetUltimateRedirect(fancyPagesDictByWikiname, fancyPagesDictByWikiname[redirect].Redirect)
-
-# Fill in the UltimateRedirect element
-num=0
-for fancyPage in fancyPagesDictByWikiname.values():
-    if fancyPage.Redirect is not None:
-        num+=1
-        fancyPage.UltimateRedirect=GetUltimateRedirect(fancyPagesDictByWikiname, fancyPage.Redirect)
-Log("   "+str(num)+" redirects found", Print=False)
 
 # OK, now we have a dictionary of all the pages on Fancy 3, which contains all of their outgoing links
 # Build up a dictionary of redirects.  It is indexed by the canonical name of a page and the value is the canonical name of the ultimate redirect
@@ -230,7 +412,7 @@ with open("Redirects.txt", "w+", encoding='utf-8') as f:
 
 # Next, a list of redirects with a missing target
 Log("Writing: Redirects with missing target.txt")
-allFancy3Pagenames=[WindowsFilenameToWikiPagename(n) for n in allFancy3PagesFnames]
+allFancy3Pagenames=set([WindowsFilenameToWikiPagename(n) for n in allFancy3PagesFnames])
 with open("Redirects with missing target.txt", "w+", encoding='utf-8') as f:
     for key in redirects.keys():
         dest=redirects[key]
@@ -255,19 +437,19 @@ def IsInterestingName(p: str) -> bool:
 
 
 Log("Writing: Peoples names.txt")
-peopleNames=[]
+peopleNames=set()
 # First make a list of all the pages labelled as "fan" or "pro"
 with open("Peoples rejected names.txt", "w+", encoding='utf-8') as f:
     for fancyPage in fancyPagesDictByWikiname.values():
         if fancyPage.IsPerson():
-            peopleNames.append(RemoveTrailingParens(fancyPage.Name))
+            peopleNames.add(RemoveTrailingParens(fancyPage.Name))
             # Then all the redirects to one of those pages.
             if fancyPage.Name in inverseRedirects.keys():
                 for p in inverseRedirects[fancyPage.Name]:
                     if p in fancyPagesDictByWikiname.keys():
-                        peopleNames.append(RemoveTrailingParens(fancyPagesDictByWikiname[p].UltimateRedirect))
+                        peopleNames.add(RemoveTrailingParens(fancyPagesDictByWikiname[p].UltimateRedirect))
                         if IsInterestingName(p):
-                            peopleNames.append(p)
+                            peopleNames.add(p)
                         else:
                             f.write("Uninteresting: "+p+"\n")
                     else:
@@ -276,10 +458,8 @@ with open("Peoples rejected names.txt", "w+", encoding='utf-8') as f:
                 f.write(p+" Not in inverseRedirects.keys()\n")
 
 
-# De-dupe it
-peopleNames=list(set(peopleNames))
-
 with open("Peoples names.txt", "w+", encoding='utf-8') as f:
+    peopleNames=list(peopleNames)   # Turn it into a list so we can sort it.
     peopleNames.sort(key=lambda p: p.split()[-1][0].upper()+p.split()[-1][1:]+","+" ".join(p.split()[0:-1]))    # Invert so that last name is first and make initial letter UC.
     for name in peopleNames:
         f.write(name+"\n")
