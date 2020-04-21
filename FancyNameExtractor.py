@@ -92,12 +92,6 @@ def UltimateRedirectName(fancyPagesDictByWikiname: Dict[str, F3Page], redirect: 
 
     return UltimateRedirectName(fancyPagesDictByWikiname, fancyPagesDictByWikiname[redirect].Redirect)
 
-def UltimateRedirectPage(fancyPagesDictByWikiname: Dict[str, F3Page], redirect: str) -> Optional[F3Page]:
-    redirect=UltimateRedirectName(fancyPagesDictByWikiname, redirect)
-    if redirect not in fancyPagesDictByWikiname.keys():
-        return None
-    return fancyPagesDictByWikiname[redirect]
-
 # Fill in the UltimateRedirect element
 Log("***Computing redirect structure")
 num=0
