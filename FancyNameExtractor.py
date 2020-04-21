@@ -146,7 +146,7 @@ def BaseFormOfLocaleName(localeBaseForms: Dict[str, str], name: str) -> str:
 #   where Word is a string of letters with an initial capital, the comma is optional, and XX is a pair of upper case letters
 # Note that this will also pick up roman-numeraled con names, E.g., Fantasycon XI, so we need to remove these later
 def ScanForLocales(locales: Set[str], s: str) -> Optional[Set[str]]:
-    pattern="in (?:[A-Za-z]* )?\[*([A-Z][a-z]+\]*,?\\s+[A-Z]{2})\]*[^a-zA-Z]"
+    pattern="in (?:[A-Za-z]* )?\[*([A-Z][a-z]+\]*,?\\s+\[*[A-Z]{2})\]*[^a-zA-Z]"
             # (?:[A-Za-z]* )?   lets us ignore the "Oklahoma" of in Oklahoma City, OK)
             # \[*  and  \]*     Lets us ignore [[brackets]]
             # The "[^a-zA-Z]"   prohibits another letter following the putative state
@@ -157,6 +157,7 @@ def ScanForLocales(locales: Set[str], s: str) -> Optional[Set[str]]:
     skippers={"Astra", "Con"}       # Second word of multi-word con names
     out=set()
     for l in lst:
+        l=l.replace("[", "")    # We only need to remove the [ because only a [ can be inside the capture group
         splt=SplitOnSpan(",\s", l)
         if len(splt) == 2:
             if splt[0] not in skippers and splt[1] not in impossiblestates:
