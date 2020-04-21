@@ -310,6 +310,8 @@ corrections={
     "Spring, MD": "Silver Spring, MD",
     "Luzerne, NY": "Lake Luzerne, NY",
     "Springs, NY": "Saratoga Springs, NY",
+    "Brook, NY": "Stony Brook, NY",
+    "Brook, LI": "Stony Brook, NY",
     "Creek, MI": "Battle Creek, MI"
 }
 
