@@ -6,7 +6,7 @@ import re
 
 from F3Page import F3Page, DigestPage
 from Log import Log, LogOpen, LogSetHeader
-from HelpersPackage import SplitOnSpan, WindowsFilenameToWikiPagename
+from HelpersPackage import SplitOnSpan, WindowsFilenameToWikiPagename, WikiExtractLink
 from FanzineIssueSpecPackage import FanzineDateRange
 
 # The goal of this program is to produce an index to all of the names on Fancy 3 and fanac.org with links to everything interesting about them.
@@ -262,10 +262,11 @@ for page in fancyPagesDictByWikiname.values():
                     fdr=FanzineDateRange().Match(datestr)
                     if fdr.IsEmpty():
                         Log("***Could not interpret "+row[concol]+"'s date range: "+row[datecol])
-                    else:
-                        if fdr.Duration() > 6:
-                            Log("??? "+page.Name+" has long duration: "+str(fdr))
-                        conventions[row[concol].lower()+str(fdr._startdate.Year)]=((row[concol], fdr))      # We merge conventions with the same name and year
+                        continue
+                    conname=WikiExtractLink(row[concol])
+                    if fdr.Duration() > 6:
+                        Log("??? "+page.Name+" has long duration: "+str(fdr))
+                    conventions[conname.lower()+"$"+str(fdr._startdate.Year)]=(conname, fdr)      # We merge conventions with the same name and year
 
 
 # Convert the con dictionary to a list and sort it in date order
