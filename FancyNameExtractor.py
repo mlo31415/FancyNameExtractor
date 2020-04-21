@@ -266,12 +266,12 @@ for page in fancyPagesDictByWikiname.values():
                     conname=WikiExtractLink(row[concol])
                     if fdr.Duration() > 6:
                         Log("??? "+page.Name+" has long duration: "+str(fdr))
-                    conventions[conname.lower()+"$"+str(fdr._startdate.Year)]=(conname, fdr)      # We merge conventions with the same name and year
+                    conventions[conname.lower()+"$"+str(fdr._startdate.Year)]=(conname, row[concol], fdr)      # We merge conventions with the same name and year
 
 
 # Convert the con dictionary to a list and sort it in date order
 conventions=[c for c in conventions.values()]
-conventions.sort(key=lambda d: d[1])
+conventions.sort(key=lambda d: d[2])
 
 #TODO: Add a list of keywords to find and remove.  E.g. "Astra RR" ("Ad Astra XI")
 #TODO: Create a list of fixups for multi-word city names, e.g., "Station, TX" -> "College Station, TX", "Paul, MN" ->"St. Paul, MN", etc
@@ -333,7 +333,7 @@ with open("Convention locations.txt", "w+", encoding='utf-8') as f:
 Log("Writing: Convention timeline.txt")
 with open("Convention timeline.txt", "w+", encoding='utf-8') as f:
     for con in conventions:
-        f.write(str(con[1])+": "+str(con[0])+"\n")
+        f.write(str(con[2])+": "+str(con[1])+"\n")
 
 Log("Writing Convention timeline (Fancy).txt")
 with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
@@ -341,7 +341,7 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
     currentDateRange=None
     f.write("<tab>\n")
     for con in conventions:
-        conname=StripBrackets(con[0])
+        conname=con[0]
         conloc=""
         if conname in conventionLocations.keys():
             cl=conventionLocations[conname]
@@ -352,17 +352,17 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
                     conloc+=c
         if len(conloc) > 0:
             conloc="&nbsp;&nbsp;&nbsp;<small>("+conloc+")</small>"
-        if currentYear == con[1]._startdate.Year:
-            if currentDateRange == con[1]:
-                f.write("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' ' ||"+str(con[0])+conloc+"\n")
+        if currentYear == con[2]._startdate.Year:
+            if currentDateRange == con[2]:
+                f.write("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' ' ||"+str(con[1])+conloc+"\n")
             else:
-                f.write(str(con[1])+"||"+str(con[0])+conloc+"\n")
-                currentDateRange=con[1]
+                f.write(str(con[2])+"||"+str(con[1])+conloc+"\n")
+                currentDateRange=con[2]
         else:
-            currentYear = con[1]._startdate.Year
-            currentDateRange=con[1]
+            currentYear = con[2]._startdate.Year
+            currentDateRange=con[2]
             f.write('colspan="2"| '+"<big><big>'''"+str(currentYear)+"'''</big></big>\n")
-            f.write(str(con[1])+"||"+str(con[0])+conloc+"\n")
+            f.write(str(con[2])+"||"+str(con[1])+conloc+"\n")
     f.write("</tab>")
 
 # OK, now we have a dictionary of all the pages on Fancy 3, which contains all of their outgoing links
