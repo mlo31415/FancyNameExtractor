@@ -329,12 +329,6 @@ with open("Convention locations.txt", "w+", encoding='utf-8') as f:
         f.write(str(con[0])+": "+str(con[1])+"\n")
 
 
-# List the conventions
-Log("Writing: Convention timeline.txt")
-with open("Convention timeline.txt", "w+", encoding='utf-8') as f:
-    for con in conventions:
-        f.write(str(con[2])+": "+str(con[1])+"\n")
-
 Log("Writing Convention timeline (Fancy).txt")
 with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
     currentYear=None
