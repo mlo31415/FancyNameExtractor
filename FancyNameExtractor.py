@@ -46,7 +46,7 @@ from FanzineIssueSpecPackage import FanzineDateRange
 #       If a redirect, the redirect name
 
 fancySitePath=r"C:\Users\mlo\Documents\usr\Fancyclopedia\Python\site"   # A local copy of the site maintained by FancyDownloader
-LogOpen("Log", "Error", dated=True)
+LogOpen("Log", "Error")
 
 # The local version of the site is a pair (sometimes also a folder) of files with the Wikidot name of the page.
 # <name>.txt is the text of the current version of the page
