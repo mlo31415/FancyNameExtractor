@@ -3,6 +3,7 @@ from typing import Optional, Dict, List, Set
 
 import os
 import re
+from collections import namedtuple
 
 from F3Page import F3Page, DigestPage
 from Log import Log, LogOpen, LogSetHeader
@@ -234,6 +235,7 @@ for page in fancyPagesDictByWikiname.values():
 # Analyze the conseries pages and extract conventions from it
 Log("***Analyzing convention series tables")
 conventions={}  # We use a dictionary to eliminate duplicates
+ConLoc=namedtuple("ConLoc", "Link, Text, DateRange")
 for page in fancyPagesDictByWikiname.values():
     if "Conseries" in page.Categories:
         LogSetHeader("Processing conseries "+page.Name)
@@ -266,12 +268,12 @@ for page in fancyPagesDictByWikiname.values():
                     conname=WikiExtractLink(row[concol])
                     if fdr.Duration() > 6:
                         Log("??? "+page.Name+" has long duration: "+str(fdr))
-                    conventions[conname.lower()+"$"+str(fdr._startdate.Year)]=(conname, row[concol], fdr)      # We merge conventions with the same name and year
+                    conventions[conname.lower()+"$"+str(fdr._startdate.Year)]=ConLoc(conname, row[concol], fdr)      # We merge conventions with the same name and year
 
 
 # Convert the con dictionary to a list and sort it in date order
 conventions=[c for c in conventions.values()]
-conventions.sort(key=lambda d: d[2])
+conventions.sort(key=lambda d: d.DateRange)
 
 #TODO: Add a list of keywords to find and remove.  E.g. "Astra RR" ("Ad Astra XI")
 corrections={
@@ -312,7 +314,7 @@ corrections={
 
 # Strip the convention names from the locations list.  (I.e., "Fantaycon XI" may look like a place, but it isn't.)
 # We need a list of convention names.  These names are in [[name]] or [[name|name2]] for, so remove the crud
-connames=[c[0].replace("[[", "").replace("]]","") for c in conventions]
+connames=[c.Link.replace("[[", "").replace("]]","") for c in conventions]
 for conname, conlocs in conventionLocations.items():
     newlocs=set()
     for loc in conlocs:
@@ -328,7 +330,7 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
     currentDateRange=None
     f.write("<tab>\n")
     for con in conventions:
-        conname=con[0]
+        conname=con.Link
         conloc=""
         if conname in conventionLocations.keys():
             cl=conventionLocations[conname]
@@ -339,17 +341,17 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
                     conloc+=c
         if len(conloc) > 0:
             conloc="&nbsp;&nbsp;&nbsp;<small>("+conloc+")</small>"
-        if currentYear == con[2]._startdate.Year:
-            if currentDateRange == con[2]:
-                f.write("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' ' ||"+str(con[1])+conloc+"\n")
+        if currentYear == con.DateRange._startdate.Year:
+            if currentDateRange == con.DateRange:
+                f.write("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' ' ||"+str(con.Text)+conloc+"\n")
             else:
-                f.write(str(con[2])+"||"+str(con[1])+conloc+"\n")
-                currentDateRange=con[2]
+                f.write(str(con.DateRange)+"||"+str(con.Text)+conloc+"\n")
+                currentDateRange=con.DateRange
         else:
-            currentYear = con[2]._startdate.Year
-            currentDateRange=con[2]
+            currentYear = con.DateRange._startdate.Year
+            currentDateRange=con.DateRange
             f.write('colspan="2"| '+"<big><big>'''"+str(currentYear)+"'''</big></big>\n")
-            f.write(str(con[2])+"||"+str(con[1])+conloc+"\n")
+            f.write(str(con.DateRange)+"||"+str(con.Text)+conloc+"\n")
     f.write("</tab>")
 
 # OK, now we have a dictionary of all the pages on Fancy 3, which contains all of their outgoing links
