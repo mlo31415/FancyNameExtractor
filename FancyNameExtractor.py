@@ -274,7 +274,6 @@ conventions=[c for c in conventions.values()]
 conventions.sort(key=lambda d: d[2])
 
 #TODO: Add a list of keywords to find and remove.  E.g. "Astra RR" ("Ad Astra XI")
-#TODO: Create a list of fixups for multi-word city names, e.g., "Station, TX" -> "College Station, TX", "Paul, MN" ->"St. Paul, MN", etc
 corrections={
     "Paul, MN": "St. Paul, MN",
     "Louis, MO": "St. Louis, MO",
@@ -356,6 +355,7 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
 # OK, now we have a dictionary of all the pages on Fancy 3, which contains all of their outgoing links
 # Build up a dictionary of redirects.  It is indexed by the canonical name of a page and the value is the canonical name of the ultimate redirect
 # Build up an inverse list of all the pages that redirect *to* a given page, also indexed by the page's canonical name. The value here is a list of canonical names.
+Log("***Create inverse redirects tables")
 redirects={}            # Key is the name of a redirect; value is the ultimate destination
 inverseRedirects={}     # Key is the name of a destination page, value is a list of names of pages that redirect to it
 for fancyPage in fancyPagesDictByWikiname.values():
