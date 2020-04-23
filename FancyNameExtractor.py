@@ -323,12 +323,6 @@ for conname, conlocs in conventionLocations.items():
             newlocs.add(loc)
     conventionLocations[conname]=newlocs
 
-Log("Writing: Convention locations.txt")
-with open("Convention locations.txt", "w+", encoding='utf-8') as f:
-    for con in conventionLocations.items():
-        f.write(str(con[0])+": "+str(con[1])+"\n")
-
-
 Log("Writing Convention timeline (Fancy).txt")
 with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
     currentYear=None
