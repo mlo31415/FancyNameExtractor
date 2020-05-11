@@ -353,6 +353,7 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
             f.write('colspan="2"| '+"<big><big>'''"+str(currentYear)+"'''</big></big>\n")
             f.write(str(con.DateRange)+"||"+str(con.Text)+conloc+"\n")
     f.write("</tab>")
+    f.write("{{conrunning}}\n[[Category:List]]\n")
 
 # OK, now we have a dictionary of all the pages on Fancy 3, which contains all of their outgoing links
 # Build up a dictionary of redirects.  It is indexed by the canonical name of a page and the value is the canonical name of the ultimate redirect
