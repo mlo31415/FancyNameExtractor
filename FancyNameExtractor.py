@@ -371,6 +371,20 @@ for fancyPage in fancyPagesDictByWikiname.values():
         if fancyPage.UltimateRedirect != fancyPage.Redirect:
             inverseRedirects[fancyPage.UltimateRedirect].append(fancyPage.Name)
 
+# Analyze the Locales
+# Create a list of things that redirect to a Locale, but are not tagged as a locale.
+Log("***Look for things that redirect to a Locale, but are not tagged as a Locale")
+with open("Untagged locales.txt", "w+", encoding='utf-8') as f:
+    for fancyPage in fancyPagesDictByWikiname.values():
+        if "Locale" in fancyPage.Categories:                        # We only care about locales
+            if fancyPage.UltimateRedirect == fancyPage.Name:        # We only care about the ultimate redirect
+                if fancyPage.Name in inverseRedirects.keys():
+                    for inverse in inverseRedirects[fancyPage.Name]:    # Look at everything that redirects to this
+                        if "Locale" not in fancyPagesDictByWikiname[inverse].Categories:
+                            if "-" not in inverse:                  # If there's a hyphen, it's probably a Wikidot redirect
+                                if inverse[1:] != inverse[1:].lower() and " " in inverse:   # There's a capital letter after the 1st and also a space
+                                    f.write(fancyPage.Name+" is pointed to by "+inverse+" which is not a Locale\n")
+
 # Create a dictionary of page references for people pages.
 # The key is a page's canonical name; the value is a list of pages at which they are referenced.
 
