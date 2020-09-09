@@ -47,7 +47,7 @@ from FanzineIssueSpecPackage import FanzineDateRange
 #       If a redirect, the redirect name
 
 fancySitePath=r"C:\Users\mlo\Documents\usr\Fancyclopedia\Python\site"   # A local copy of the site maintained by FancyDownloader
-LogOpen("Log", "Error")
+LogOpen("Log.txt", "Log Error.txt")
 
 # The local version of the site is a pair (sometimes also a folder) of files with the Wikidot name of the page.
 # <name>.txt is the text of the current version of the page
@@ -214,9 +214,13 @@ for page in fancyPagesDictByWikiname.values():
             if "Location" not in page.Table.Headers:
                 continue
             loccol=page.Table.Headers.index("Location")
-            if "Convention" not in page.Table.Headers:
+            if "Convention" in page.Table.Headers:
+                concol=page.Table.Headers.index("Convention")
+            elif "Convention Name" in page.Table.Headers:
+                concol=page.Table.Headers.index("Convention Name")
+            else:
+                Log("Can't find convention column in conseries page "+page.Name, isError=True)
                 continue
-            concol=page.Table.Headers.index("Convention")
             for row in page.Table.Rows:
                 if loccol < len(row) and len(row[loccol]) > 0 and concol < len(row) and len(row[concol]) > 0:
                     con=StripBrackets(row[concol])
@@ -268,6 +272,7 @@ for page in fancyPagesDictByWikiname.values():
                     # Ignore anything in trailing parenthesis
                     p=re.compile("\(.*\)\s?$")
                     datestr=p.sub("", row[datecol])
+                    datestr=datestr.replace("&nbsp;", " ").replace("&#8209;", "-")
                     fdr=FanzineDateRange().Match(datestr)
                     if fdr.IsEmpty():
                         Log("***Could not interpret "+row[concol]+"'s date range: "+row[datecol])
