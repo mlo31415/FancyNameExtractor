@@ -82,7 +82,14 @@ Log("\n   "+str(len(fancyPagesDictByWikiname))+" semi-unique links found")
 
 # A FancyPage has an UltimateRedirect which can only be filled in once all the redirects are known.
 # Run through the pages and fill in UltimateRedirect.
-def UltimateRedirectName(fancyPagesDictByWikiname: Dict[str, F3Page], redirect: str) -> str:
+def UltimateRedirectName(fancyPagesDictByWikiname: Dict[str, F3Page], redirect: str, recurse: bool=False) -> str:
+    global recurselist
+    if not recurse:
+        recurselist=[]
+    if redirect in recurselist:
+        Log("Recursion loop: "+str(recurselist))
+        return redirect
+    recurselist.append(redirect)
     assert redirect is not None
     if redirect not in fancyPagesDictByWikiname.keys():  # Target of redirect does not exist, so this redirect is the ultimate redirect
         return redirect
@@ -91,7 +98,7 @@ def UltimateRedirectName(fancyPagesDictByWikiname: Dict[str, F3Page], redirect: 
     if fancyPagesDictByWikiname[redirect].Redirect is None: # Target is a real page, so that real page is the ultimate redirect
         return fancyPagesDictByWikiname[redirect].Name
 
-    return UltimateRedirectName(fancyPagesDictByWikiname, fancyPagesDictByWikiname[redirect].Redirect)
+    return UltimateRedirectName(fancyPagesDictByWikiname, fancyPagesDictByWikiname[redirect].Redirect, recurse=True)
 
 # Fill in the UltimateRedirect element
 Log("***Computing redirect structure")
