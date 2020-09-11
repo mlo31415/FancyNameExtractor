@@ -239,7 +239,7 @@ for page in fancyPagesDictByWikiname.values():
                 if page.Name not in conventionLocations.keys():
                     conventionLocations[page.UltimateRedirect]=set()
                 conventionLocations[page.UltimateRedirect].add(BaseFormOfLocaleName(localeBaseForms,place))
-                Log("   Convention: add="+place)
+                Log("   Convention: add="+page.UltimateRedirect+"  as "+BaseFormOfLocaleName(localeBaseForms,place))
                 if page.Name != page.UltimateRedirect:
                     Log("^^^Redirect issue: "+page.Name+" != "+page.UltimateRedirect)
 
@@ -461,6 +461,7 @@ with open("Redirects with missing target.txt", "w+", encoding='utf-8') as f:
 # Ambiguous names will often end with something in parenthesis which need to be removed for this particular file
 def RemoveTrailingParens(s: str) -> str:
     return re.sub("\s\(.*\)$", "", s)       # Delete any trailing ()
+
 
 # Some names are not worth adding to the list of people names.  Try to detect them.
 def IsInterestingName(p: str) -> bool:
