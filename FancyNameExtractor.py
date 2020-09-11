@@ -193,14 +193,6 @@ def ScanForLocales(locales: Set[str], s: str) -> Optional[Set[str]]:
     return out
 
 
-def StripBrackets(s: str) -> str:
-    s=s.replace("[[", "").replace("]]", "")
-    # If there's a "|" we ignore it and everything to its right, as it's a display name for the link
-    if "|" in s:
-        s=s.split("|")[0]
-    return s
-
-
 # Create a dictionary of convention locations
 # The key is the convention name. The value is a set of locations. (There should be only one, of course, but there may be more and we need to understand that so we can fix it)
 conventionLocations={}
@@ -218,15 +210,17 @@ for page in fancyPagesDictByWikiname.values():
                 concol=page.Table.Headers.index("Convention")
             elif "Convention Name" in page.Table.Headers:
                 concol=page.Table.Headers.index("Convention Name")
+            elif "Name" in page.Table.Headers:
+                concol=page.Table.Headers.index("Name")
             else:
                 Log("Can't find convention column in conseries page "+page.Name, isError=True)
                 continue
             for row in page.Table.Rows:
                 if loccol < len(row) and len(row[loccol]) > 0 and concol < len(row) and len(row[concol]) > 0:
-                    con=StripBrackets(row[concol])
+                    con=WikiExtractLink(row[concol])
                     if con not in conventionLocations.keys():
                         conventionLocations[con]=set()
-                    loc=StripBrackets(row[loccol])
+                    loc=WikiExtractLink(row[loccol])
                     conventionLocations[con].add(BaseFormOfLocaleName(localeBaseForms,loc))
                     Log("   Conseries: add="+loc+" to "+con)
 
@@ -235,7 +229,7 @@ for page in fancyPagesDictByWikiname.values():
         m=ScanForLocales(locales, page.Source)
         if m is not None:
             for place in m:
-                place=StripBrackets(place)
+                place=WikiExtractLink(place)
                 if page.Name not in conventionLocations.keys():
                     conventionLocations[page.UltimateRedirect]=set()
                 conventionLocations[page.UltimateRedirect].add(BaseFormOfLocaleName(localeBaseForms,place))
@@ -451,7 +445,7 @@ Log("Writing: Redirects with missing target.txt")
 allFancy3Pagenames=set([WindowsFilenameToWikiPagename(n) for n in allFancy3PagesFnames])
 with open("Redirects with missing target.txt", "w+", encoding='utf-8') as f:
     for key in redirects.keys():
-        dest=redirects[key]
+        dest=WikiExtractLink(redirects[key])
         if dest not in allFancy3Pagenames:
             f.write(key+" --> "+dest+"\n")
 
