@@ -225,14 +225,14 @@ for page in fancyPagesDictByWikiname.values():
             elif "Name" in page.Table.Headers:
                 concol=page.Table.Headers.index("Name")
             else:
-                Log("Can't find convention column in conseries page "+page.Name, isError=True)
+                Log("***Can't find convention column in conseries page "+page.Name, isError=True)
 
             if "Date" in page.Table.Headers:
                 datecol=page.Table.Headers.index("Date")
             elif "Dates" in page.Table.Headers:
                 datecol=page.Table.Headers.index("Dates")
             else:
-                Log("***No column 'Date(s)' in conseries "+page.Name, isError=True)
+                Log("***Can't find Date(s)' column in conseries page "+page.Name, isError=True)
 
             # Walk the convention table
             # Add the convention to the list of conventions for which we want locations
