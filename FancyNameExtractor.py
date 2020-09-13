@@ -203,15 +203,16 @@ conventionLocations={}
 # Just collect the data. We'll clean it up later.
 
 conventions={}  # We use a dictionary to eliminate duplicates
-ConLoc=namedtuple("ConLoc", "Link, Text, DateRange")
+ConDates=namedtuple("ConDates", "Link, Text, DateRange")
 for page in fancyPagesDictByWikiname.values():
     LogSetHeader("Processing "+page.Name)
 
     # First, see if this is a Conseries page
     if "Conseries" in page.Categories:
-        loccol=None
-        concol=None
-        datecol=None
+        # We'd like to find the columns containing:
+        loccol=None     # The convention's location
+        concol=None     # The convention's name
+        datecol=None    # The conventions dates
         if page.Table is not None:
             LogSetHeader("Processing conseries "+page.Name)
             if "Location" in page.Table.Headers:
@@ -235,7 +236,8 @@ for page in fancyPagesDictByWikiname.values():
                 Log("***Can't find Date(s)' column in conseries page "+page.Name, isError=True)
 
             # Walk the convention table
-            # Add the convention to the list of conventions for which we want locations
+
+            # If the con series table has locations, add the convention and location to the conventionLocations list
             if concol is not None and loccol is not None:
                 for row in page.Table.Rows:
                     if loccol < len(row) and len(row[loccol]) > 0 and concol < len(row) and len(row[concol]) > 0:
@@ -246,6 +248,7 @@ for page in fancyPagesDictByWikiname.values():
                         conventionLocations[con].add(BaseFormOfLocaleName(localeBaseForms,loc))
                         Log("   Conseries: add="+loc+" to "+con)
 
+            # If the conseries has a date, add
             if concol is not None and datecol is not None:
                 for row in page.Table.Rows:
                     if concol < len(row) and len(row[concol]) > 0  and datecol < len(row) and len(row[datecol]) > 0:
@@ -260,7 +263,7 @@ for page in fancyPagesDictByWikiname.values():
                         conname=WikiExtractLink(row[concol])
                         if fdr.Duration() > 6:
                             Log("??? "+page.Name+" has long duration: "+str(fdr))
-                        conventions[conname.lower()+"$"+str(fdr._startdate.Year)]=ConLoc(conname, row[concol], fdr)      # We merge conventions with the same name and year
+                        conventions[conname.lower()+"$"+str(fdr._startdate.Year)]=ConDates(conname, row[concol], fdr)      # We merge conventions with the same name and year
             continue    # If it's a con series page, it needn't be checked for other page types
 
     # Now see if it's an individual convention page
