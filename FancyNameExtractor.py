@@ -247,7 +247,6 @@ for page in fancyPagesDictByWikiname.values():
         if page.Table is not None:
             if "Convention" in page.Table.Headers:
                 concol=page.Table.Headers.index("Convention")
-                concol=page.Table.Headers.index("Convention")
             elif "Convention Name" in page.Table.Headers:
                 concol=page.Table.Headers.index("Convention Name")
             elif "Name" in page.Table.Headers:
