@@ -193,19 +193,31 @@ def ScanForLocales(locales: Set[str], s: str) -> Optional[Set[str]]:
     return out
 
 
+Log("***Beginning scanning for locations")
+Log("***Analyzing convention series tables")
 # Create a dictionary of convention locations
 # The key is the convention name. The value is a set of locations. (There should be only one, of course, but there may be more and we need to understand that so we can fix it)
 conventionLocations={}
+
 # First look through the con series pages looking for tables with a location column
 # Just collect the data. We'll clean it up later.
-Log("Beginning scanning for locations")
+
+conventions={}  # We use a dictionary to eliminate duplicates
+ConLoc=namedtuple("ConLoc", "Link, Text, DateRange")
 for page in fancyPagesDictByWikiname.values():
     LogSetHeader("Processing "+page.Name)
+
+    # First, see if this is a Conseries page
     if "Conseries" in page.Categories:
+        loccol=None
+        concol=None
+        datecol=None
         if page.Table is not None:
-            if "Location" not in page.Table.Headers:
-                continue
-            loccol=page.Table.Headers.index("Location")
+            LogSetHeader("Processing conseries "+page.Name)
+            if "Location" in page.Table.Headers:
+                loccol=page.Table.Headers.index("Location")
+                # We don't log the missing location column because that is the norm
+
             if "Convention" in page.Table.Headers:
                 concol=page.Table.Headers.index("Convention")
             elif "Convention Name" in page.Table.Headers:
@@ -214,16 +226,44 @@ for page in fancyPagesDictByWikiname.values():
                 concol=page.Table.Headers.index("Name")
             else:
                 Log("Can't find convention column in conseries page "+page.Name, isError=True)
-                continue
-            for row in page.Table.Rows:
-                if loccol < len(row) and len(row[loccol]) > 0 and concol < len(row) and len(row[concol]) > 0:
-                    con=WikiExtractLink(row[concol])
-                    if con not in conventionLocations.keys():
-                        conventionLocations[con]=set()
-                    loc=WikiExtractLink(row[loccol])
-                    conventionLocations[con].add(BaseFormOfLocaleName(localeBaseForms,loc))
-                    Log("   Conseries: add="+loc+" to "+con)
 
+            if "Date" in page.Table.Headers:
+                datecol=page.Table.Headers.index("Date")
+            elif "Dates" in page.Table.Headers:
+                datecol=page.Table.Headers.index("Dates")
+            else:
+                Log("***No column 'Date(s)' in conseries "+page.Name, isError=True)
+
+            # Walk the convention table
+            # Add the convention to the list of conventions for which we want locations
+            if concol is not None and loccol is not None:
+                for row in page.Table.Rows:
+                    if loccol < len(row) and len(row[loccol]) > 0 and concol < len(row) and len(row[concol]) > 0:
+                        con=WikiExtractLink(row[concol])
+                        if con not in conventionLocations.keys():
+                            conventionLocations[con]=set()
+                        loc=WikiExtractLink(row[loccol])
+                        conventionLocations[con].add(BaseFormOfLocaleName(localeBaseForms,loc))
+                        Log("   Conseries: add="+loc+" to "+con)
+
+            if concol is not None and datecol is not None:
+                for row in page.Table.Rows:
+                    if concol < len(row) and len(row[concol]) > 0  and datecol < len(row) and len(row[datecol]) > 0:
+                        # Ignore anything in trailing parenthesis
+                        p=re.compile("\(.*\)\s?$")
+                        datestr=p.sub("", row[datecol])
+                        datestr=datestr.replace("&nbsp;", " ").replace("&#8209;", "-")
+                        fdr=FanzineDateRange().Match(datestr)
+                        if fdr.IsEmpty():
+                            Log("***Could not interpret "+row[concol]+"'s date range: "+row[datecol])
+                            continue
+                        conname=WikiExtractLink(row[concol])
+                        if fdr.Duration() > 6:
+                            Log("??? "+page.Name+" has long duration: "+str(fdr))
+                        conventions[conname.lower()+"$"+str(fdr._startdate.Year)]=ConLoc(conname, row[concol], fdr)      # We merge conventions with the same name and year
+            continue    # If it's a con series page, it needn't be checked for other page types
+
+    # Now see if it's an individual convention page
     # If it's an individual convention page, we search through its text for something that looks like a placename.
     if "Convention" in page.Categories and "Conseries" not in page.Categories:
         m=ScanForLocales(locales, page.Source)
@@ -237,53 +277,13 @@ for page in fancyPagesDictByWikiname.values():
                 if page.Name != page.UltimateRedirect:
                     Log("^^^Redirect issue: "+page.Name+" != "+page.UltimateRedirect)
 
-# Analyze the conseries pages and extract conventions from it
-Log("***Analyzing convention series tables")
-conventions={}  # We use a dictionary to eliminate duplicates
-ConLoc=namedtuple("ConLoc", "Link, Text, DateRange")
-for page in fancyPagesDictByWikiname.values():
-    if "Conseries" in page.Categories:
-        LogSetHeader("Processing conseries "+page.Name)
-        if page.Table is not None:
-            if "Convention" in page.Table.Headers:
-                concol=page.Table.Headers.index("Convention")
-            elif "Convention Name" in page.Table.Headers:
-                concol=page.Table.Headers.index("Convention Name")
-            elif "Name" in page.Table.Headers:
-                concol=page.Table.Headers.index("Name")
-            else:
-                Log("***No column 'Convention(s)' in conseries "+page.Name, isError=True)
-                continue
-
-            if "Date" in page.Table.Headers:
-                datecol=page.Table.Headers.index("Date")
-            elif "Dates" in page.Table.Headers:
-                datecol=page.Table.Headers.index("Dates")
-            else:
-                Log("***No column 'Date(s)' in conseries "+page.Name, isError=True)
-                continue
-
-            for row in page.Table.Rows:
-                if concol < len(row) and len(row[concol]) > 0  and datecol < len(row) and len(row[datecol]) > 0:
-                    # Ignore anything in trailing parenthesis
-                    p=re.compile("\(.*\)\s?$")
-                    datestr=p.sub("", row[datecol])
-                    datestr=datestr.replace("&nbsp;", " ").replace("&#8209;", "-")
-                    fdr=FanzineDateRange().Match(datestr)
-                    if fdr.IsEmpty():
-                        Log("***Could not interpret "+row[concol]+"'s date range: "+row[datecol])
-                        continue
-                    conname=WikiExtractLink(row[concol])
-                    if fdr.Duration() > 6:
-                        Log("??? "+page.Name+" has long duration: "+str(fdr))
-                    conventions[conname.lower()+"$"+str(fdr._startdate.Year)]=ConLoc(conname, row[concol], fdr)      # We merge conventions with the same name and year
-
 
 # Convert the con dictionary to a list and sort it in date order
 conventions=[c for c in conventions.values()]
 conventions.sort(key=lambda d: d.DateRange)
 
-#TODO: Add a list of keywords to find and remove.  E.g. "Astra RR" ("Ad Astra XI")
+# The current algorithm messes up multi-word city names and only catches the last word.
+# Correct the ones we know of to the full name.
 corrections={
     "Paul, MN": "St. Paul, MN",
     "Louis, MO": "St. Louis, MO",
@@ -319,6 +319,7 @@ corrections={
     "Creek, MI": "Battle Creek, MI"
 }
 
+#TODO: Add a list of keywords to find and remove.  E.g. "Astra RR" ("Ad Astra XI")
 
 # Strip the convention names from the locations list.  (I.e., "Fantaycon XI" may look like a place, but it isn't.)
 # We need a list of convention names.  These names are in [[name]] or [[name|name2]] for, so remove the crud
