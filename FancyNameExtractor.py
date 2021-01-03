@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Dict, List, Set
+from typing import Optional, Dict, Set
 
 import os
 import re
@@ -8,7 +8,7 @@ from datetime import datetime
 
 from F3Page import F3Page, DigestPage
 from Log import Log, LogOpen, LogSetHeader
-from HelpersPackage import SplitOnSpan, WindowsFilenameToWikiPagename, WikiExtractLink
+from HelpersPackage import SplitOnSpan, WindowsFilenameToWikiPagename, WikiExtractLink, FindIndexOfStringInList
 from FanzineIssueSpecPackage import FanzineDateRange
 
 # The goal of this program is to produce an index to all of the names on Fancy 3 and fanac.org with links to everything interesting about them.
@@ -60,7 +60,7 @@ Log("***Querying the local copy of Fancy 3 to create a list of all Fancyclopedia
 Log("   path='"+fancySitePath+"'")
 allFancy3PagesFnames = [f[:-4] for f in os.listdir(fancySitePath) if os.path.isfile(os.path.join(fancySitePath, f)) and f[-4:] == ".txt"]
 allFancy3PagesFnames = [cn for cn in allFancy3PagesFnames if not cn.startswith("index_")]     # Drop index pages
-#allFancy3PagesFnames= [f for f in allFancy3PagesFnames if f[0] in "ab"]        # Just to cut down the number of pages for debugging purposes
+#allFancy3PagesFnames= [f for f in allFancy3PagesFnames if f[0:2].lower() == "sm"]        # Just to cut down the number of pages for debugging purposes
 Log("   "+str(len(allFancy3PagesFnames))+" pages found")
 
 fancyPagesDictByWikiname={}     # Key is page's canname; Val is a FancyPage class containing all the references on the page
@@ -115,12 +115,12 @@ Log("   "+str(num)+" redirects found", Print=False)
 Log("\n\n***Building a locale dictionary")
 locales=set()  # We use a set to eliminate duplicates and to speed checks
 for page in fancyPagesDictByWikiname.values():
-    if "Locale" in page.Categories:
+    if "Locale" in page.Tags:
         LogSetHeader("Processing Locale "+page.Name)
         locales.add(page.Name)
     else:
         if page.UltimateRedirect is not None and page.UltimateRedirect in fancyPagesDictByWikiname.keys():
-            if "Locale" in fancyPagesDictByWikiname[page.UltimateRedirect].Categories:
+            if "Locale" in fancyPagesDictByWikiname[page.UltimateRedirect].Tags:
                 LogSetHeader("Processing Locale "+page.Name)
                 locales.add(page.Name)
 
@@ -131,7 +131,7 @@ for page in fancyPagesDictByWikiname.values():
 localeBaseForms={}  # It's defined as a dictionary with the value being the base form of the key
 for locale in locales:
     # Look for names of the form Name,ST
-    m=re.match("^([A-Za-z .]*)\,\s([A-Z]{2})$", locale)
+    m=re.match("^([A-Za-z .]*),\s([A-Z]{2})$", locale)
     if m is not None:
         city=m.groups()[0]
         state=m.groups()[1]
@@ -194,6 +194,16 @@ def ScanForLocales(locales: Set[str], s: str) -> Optional[Set[str]]:
     return out
 
 
+#------------------------------------
+class ConDates:
+    def __init__(self, Link: str="", Text: str="", DateRange: FanzineDateRange=FanzineDateRange(), Virtual: bool=False):
+        self.Link=Link
+        self.Text=Text
+        self.DateRange=DateRange
+        self.Virtual=Virtual
+
+
+
 Log("***Beginning scanning for locations")
 Log("***Analyzing convention series tables")
 # Create a dictionary of convention locations
@@ -203,44 +213,52 @@ conventionLocations={}
 # First look through the con series pages looking for tables with a location column
 # Just collect the data. We'll clean it up later.
 
-conventions={}  # We use a dictionary to eliminate duplicates
-ConDates=namedtuple("ConDates", "Link, Text, DateRange")
+def Crosscheck(inputList, checkList):
+    ListofHits=[FindIndexOfStringInList(checkList, x) for x in inputList]
+    n=next((item for item in ListofHits if item is not None), None)
+    return n
+
+# We use a dictionary to eliminate duplicates
+# It is keyed by the lower(conventionInstanceName)+conventionInstanceYear
+# The value is a ConDates class instance
+conventions={}
 for page in fancyPagesDictByWikiname.values():
     LogSetHeader("Processing "+page.Name)
 
     # First, see if this is a Conseries page
-    if "Conseries" in page.Categories:
+    if "Conseries" in page.Tags:
         # We'd like to find the columns containing:
         loccol=None     # The convention's location
         concol=None     # The convention's name
         datecol=None    # The conventions dates
         if page.Table is not None:
             LogSetHeader("Processing conseries "+page.Name)
-            if "Location" in page.Table.Headers:
-                loccol=page.Table.Headers.index("Location")
-                # We don't log the missing location column because that is the norm
+            listLocationHeaders=["Location"]
+            loccol=Crosscheck(listLocationHeaders, page.Table.Headers)
+            # We don't log the missing location column because that is common and not an error
 
-            if "Convention" in page.Table.Headers:
-                concol=page.Table.Headers.index("Convention")
-            elif "Convention Name" in page.Table.Headers:
-                concol=page.Table.Headers.index("Convention Name")
-            elif "Name" in page.Table.Headers:
-                concol=page.Table.Headers.index("Name")
-            else:
+            listNameHeaders=["Convention", "Convention Name", "Name"]
+            concol=Crosscheck(listNameHeaders, page.Table.Headers)
+            if concol is None:
                 Log("***Can't find convention column in conseries page "+page.Name, isError=True)
 
-            if "Date" in page.Table.Headers:
-                datecol=page.Table.Headers.index("Date")
-            elif "Dates" in page.Table.Headers:
-                datecol=page.Table.Headers.index("Dates")
-            else:
+            listDateHeaders=["Date", "Dates"]
+            datecol=Crosscheck(listDateHeaders, page.Table.Headers)
+            if concol is None:
                 Log("***Can't find Date(s)' column in conseries page "+page.Name, isError=True)
 
             # Walk the convention table
+            for row in page.Table.Rows:
 
-            # If the con series table has locations, add the convention and location to the conventionLocations list
-            if concol is not None and loccol is not None:
-                for row in page.Table.Rows:
+                # Look for a "virtual" flag
+                virtual=False
+                for col in row:
+                    if "(virtual)" in col.lower():
+                        virtual=True
+                        break
+
+                # If the con series table has locations, add the convention and location to the conventionLocations list
+                if concol is not None and loccol is not None:
                     if loccol < len(row) and len(row[loccol]) > 0 and concol < len(row) and len(row[concol]) > 0:
                         con=WikiExtractLink(row[concol])
                         if con not in conventionLocations.keys():
@@ -249,9 +267,8 @@ for page in fancyPagesDictByWikiname.values():
                         conventionLocations[con].add(BaseFormOfLocaleName(localeBaseForms,loc))
                         Log("   Conseries: add="+loc+" to "+con)
 
-            # If the conseries has a date, add
-            if concol is not None and datecol is not None:
-                for row in page.Table.Rows:
+                # If the conseries has a date, add
+                if concol is not None and datecol is not None:
                     if concol < len(row) and len(row[concol]) > 0  and datecol < len(row) and len(row[datecol]) > 0:
                         # Ignore anything in trailing parenthesis
                         p=re.compile("\(.*\)\s?$")
@@ -264,12 +281,11 @@ for page in fancyPagesDictByWikiname.values():
                         conname=WikiExtractLink(row[concol])
                         if fdr.Duration() > 6:
                             Log("??? "+page.Name+" has long duration: "+str(fdr))
-                        conventions[conname.lower()+"$"+str(fdr._startdate.Year)]=ConDates(conname, row[concol], fdr)      # We merge conventions with the same name and year
-            continue    # If it's a con series page, it needn't be checked for other page types
+                        conventions[conname.lower()+"$"+str(fdr._startdate.Year)]=ConDates(Link=conname, Text=row[concol], DateRange=fdr, Virtual=virtual)      # We merge conventions with the same name and year
 
-    # Now see if it's an individual convention page
+    # Ok, it's not a con series, so see if it's an individual convention page
     # If it's an individual convention page, we search through its text for something that looks like a placename.
-    if "Convention" in page.Categories and "Conseries" not in page.Categories:
+    elif "Convention" in page.Tags and "Conseries" not in page.Tags:
         m=ScanForLocales(locales, page.Source)
         if m is not None:
             for place in m:
@@ -297,6 +313,7 @@ corrections={
     "Brook, LI": "Stony Brook, NY",
     "Brook, NY": "Stony Brook, NY",
     "Carrollton, MD": "New Carrollton, MD",
+    "City, IA": "Iowa City, IA",
     "City, MO": "Kansas City, MO",
     "City, OK": "Oklahoma City, OK",
     "Collins, CO": "Fort Collins, CO",
@@ -347,30 +364,45 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
     f.write("The list currently has "+str(len(conventions))+" conventions.\n")
     currentYear=None
     currentDateRange=None
+    # We're going to write a Fancy 3 wiki table
+    # Two columns: Daterange and convention name and location
+    # The date is not repeated when it is the same
+    # The con name and location is crossed out when it was cancelled or moved and (virtual) is added when it was virtual
     f.write("<tab>\n")
     for con in conventions:
         conname=con.Link
-        conloc=""
+        # Look up the location for this convention
+        conloctext=""
         if conname in conventionLocations.keys():
             cl=conventionLocations[conname]
             if len(cl) > 0:
                 for c in cl:
-                    if len(conloc) > 0:
-                        conloc+=", "
-                    conloc+=c
-        if len(conloc) > 0:
-            conloc="&nbsp;&nbsp;&nbsp;<small>("+conloc+")</small>"
+                    if len(conloctext) > 0:
+                        conloctext+=", "
+                    conloctext+=c
+        # And format it for tabular output
+        if len(conloctext) > 0:
+            conloctext="&nbsp;&nbsp;&nbsp;<small>("+conloctext+")</small>"
+        # Format the convention name and location for tabular output
+        context=str(con.Text)+conloctext
+        if con.DateRange.Cancelled:
+            context="<s>"+context+"</s>"
+        if con.Virtual:
+            context+=" (virtual)"
+        # Now write the line
+        # We do a year header for each new year, so we need to detect when the current year changes
         if currentYear == con.DateRange._startdate.Year:
             if currentDateRange == con.DateRange:
-                f.write("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' ' ||"+str(con.Text)+conloc+"\n")
+                f.write("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' ' ||"+context+"\n")
             else:
-                f.write(str(con.DateRange)+"||"+str(con.Text)+conloc+"\n")
+                f.write(con.DateRange.HTML()+"||"+context+"\n")
                 currentDateRange=con.DateRange
         else:
+            # When the current date range changes, we put the new date range in the 1st column of the table
             currentYear = con.DateRange._startdate.Year
             currentDateRange=con.DateRange
             f.write('colspan="2"| '+"<big><big>'''"+str(currentYear)+"'''</big></big>\n")
-            f.write(str(con.DateRange)+"||"+str(con.Text)+conloc+"\n")
+            f.write(str(con.DateRange)+"||"+context+"\n")
     f.write("</tab>")
     f.write("{{conrunning}}\n[[Category:List]]\n")
 
@@ -396,11 +428,11 @@ for fancyPage in fancyPagesDictByWikiname.values():
 Log("***Look for things that redirect to a Locale, but are not tagged as a Locale")
 with open("Untagged locales.txt", "w+", encoding='utf-8') as f:
     for fancyPage in fancyPagesDictByWikiname.values():
-        if "Locale" in fancyPage.Categories:                        # We only care about locales
+        if "Locale" in fancyPage.Tags:                        # We only care about locales
             if fancyPage.UltimateRedirect == fancyPage.Name:        # We only care about the ultimate redirect
                 if fancyPage.Name in inverseRedirects.keys():
                     for inverse in inverseRedirects[fancyPage.Name]:    # Look at everything that redirects to this
-                        if "Locale" not in fancyPagesDictByWikiname[inverse].Categories:
+                        if "Locale" not in fancyPagesDictByWikiname[inverse].Tags:
                             if "-" not in inverse:                  # If there's a hyphen, it's probably a Wikidot redirect
                                 if inverse[1:] != inverse[1:].lower() and " " in inverse:   # There's a capital letter after the 1st and also a space
                                     f.write(fancyPage.Name+" is pointed to by "+inverse+" which is not a Locale\n")
@@ -499,7 +531,7 @@ with open("Peoples rejected names.txt", "w+", encoding='utf-8') as f:
                     else:
                         Log("Generating Peoples names.txt: "+p+" is not in fancyPagesDictByWikiname")
             else:
-                f.write(p+" Not in inverseRedirects.keys()\n")
+                f.write(fancyPage.Name+" Not in inverseRedirects.keys()\n")
 
 
 with open("Peoples names.txt", "w+", encoding='utf-8') as f:
