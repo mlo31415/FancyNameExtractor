@@ -3,7 +3,6 @@ from typing import Optional, Dict, Set
 
 import os
 import re
-from collections import namedtuple
 from datetime import datetime
 
 from F3Page import F3Page, DigestPage
@@ -195,12 +194,14 @@ def ScanForLocales(locales: Set[str], s: str) -> Optional[Set[str]]:
 
 
 #------------------------------------
+# Just a simple class to conveniently wrap a bunch ofn data
 class ConDates:
-    def __init__(self, Link: str="", Text: str="", DateRange: FanzineDateRange=FanzineDateRange(), Virtual: bool=False):
+    def __init__(self, Link: str="", Text: str="", DateRange: FanzineDateRange=FanzineDateRange(), Virtual: bool=False, Cancelled: bool=False):
         self.Link=Link
         self.Text=Text
         self.DateRange=DateRange
         self.Virtual=Virtual
+        self.Cancelled=Cancelled
 
 
 
@@ -250,12 +251,29 @@ for page in fancyPagesDictByWikiname.values():
             # Walk the convention table
             for row in page.Table.Rows:
 
-                # Look for a "virtual" flag
+                # Look for a text flag indicating that the convention was held virtually or was cancelled
                 virtual=False
-                for col in row:
-                    if "(virtual)" in col.lower():
-                        virtual=True
-                        break
+                vPat=re.compile("[(]?virtual|online|held online[)]?", re.IGNORECASE)
+                cPat=re.compile("[(]?cancelled[)]?", re.IGNORECASE)
+                for index, col in enumerate(row):
+                    # If this is the convention column, we don't want to remove the virtual designation because it's sometimes used as part of the con's name
+                    if concol is not None and index == concol:
+                        m=vPat.match(col)
+                        if m is not None:
+                            virtual=True
+                    else:
+                        # But for other columns, we want to remove the designation as it will just confuse later processing.
+                        newcol=vPat.sub("", col)
+                        if col != newcol:
+                            virtual=True
+                            row[index]=newcol
+                            col=newcol
+                    # Now check for a cancelled flag
+                    newcol=cPat.sub("", col)
+                    if col != newcol:
+                        cancelled=True
+                        row[index]=newcol
+                        col=newcol
 
                 # If the con series table has locations, add the convention and location to the conventionLocations list
                 if concol is not None and loccol is not None:
@@ -267,21 +285,47 @@ for page in fancyPagesDictByWikiname.values():
                         conventionLocations[con].add(BaseFormOfLocaleName(localeBaseForms,loc))
                         Log("   Conseries: add="+loc+" to "+con)
 
-                # If the conseries has a date, add
+                # If the conseries has a date, add it to the list
                 if concol is not None and datecol is not None:
                     if concol < len(row) and len(row[concol]) > 0  and datecol < len(row) and len(row[datecol]) > 0:
                         # Ignore anything in trailing parenthesis
                         p=re.compile("\(.*\)\s?$")
                         datestr=p.sub("", row[datecol])
+                        # Convert the HTML characters some people have inserted into their ascii equivalents
                         datestr=datestr.replace("&nbsp;", " ").replace("&#8209;", "-")
-                        fdr=FanzineDateRange().Match(datestr)
-                        if fdr.IsEmpty():
+
+                        # Now look for dates. There are three cases to consider:
+                        #1: date                    A simple date
+                        #2: <s>date</s>             A canceled con's date
+                        #3: <s>date</s> date        A rescheduled con's date
+                        #4: <s>date</s> <s>date</s> A rescheduled and then cancelled con's dates
+                        m=re.match("^\s?(?:<s>(.+?)</s>)?\s?(?:<s>(.+?)</s>)?\s?(.*)$", datestr)
+                        if m is None:
+                            Log("Date errror: "+datestr)
+                            continue
+
+                        fdr=[None, None, None]
+                        for i in range(3):
+                            if (m.groups()[i] is not None and len(m.groups()[i])) > 0:
+                                fdr[i]=FanzineDateRange().Match(m.groups()[i])
+                                if fdr[i].Duration() > 6:
+                                    Log("??? "+page.Name+" has long duration: "+str(fdr[i]))
+
+                        # There should be at least one interpretable date range
+                        if all(x is None for x in fdr) or all(x is None or (x is not None and x.IsEmpty()) for x in fdr):
                             Log("***Could not interpret "+row[concol]+"'s date range: "+row[datecol])
                             continue
+
+                        # There will be at most two dates, and at most one that is not cancelled
+                        # So we have the following possibilities: (d), (d, dc1), (dc1), (dc1, dc2)
+                        # Now add the convention entries
                         conname=WikiExtractLink(row[concol])
-                        if fdr.Duration() > 6:
-                            Log("??? "+page.Name+" has long duration: "+str(fdr))
-                        conventions[conname.lower()+"$"+str(fdr._startdate.Year)]=ConDates(Link=conname, Text=row[concol], DateRange=fdr, Virtual=virtual)      # We merge conventions with the same name and year
+                        if fdr[0] is not None and not fdr[0].IsEmpty():
+                            conventions[conname.lower()+"$"+str(fdr[0]._startdate.Year)]=ConDates(Link=conname, Text=row[concol], DateRange=fdr[0], Virtual=virtual, Cancelled=True)      # We merge conventions with the same name and year
+                        if fdr[1] is not None and not fdr[1].IsEmpty():
+                            conventions[conname.lower()+"$"+str(fdr[1]._startdate.Year)]=ConDates(Link=conname, Text=row[concol], DateRange=fdr[1], Virtual=virtual, Cancelled=True)      # We merge conventions with the same name and year
+                        if fdr[2] is not None and not fdr[2].IsEmpty():
+                            conventions[conname.lower()+"$"+str(fdr[2]._startdate.Year)]=ConDates(Link=conname, Text=row[concol], DateRange=fdr[2], Virtual=virtual)      # We merge conventions with the same name and year
 
     # Ok, it's not a con series, so see if it's an individual convention page
     # If it's an individual convention page, we search through its text for something that looks like a placename.
@@ -385,7 +429,7 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
             conloctext="&nbsp;&nbsp;&nbsp;<small>("+conloctext+")</small>"
         # Format the convention name and location for tabular output
         context=str(con.Text)+conloctext
-        if con.DateRange.Cancelled:
+        if con.Cancelled:
             context="<s>"+context+"</s>"
         if con.Virtual:
             context+=" (virtual)"
@@ -395,14 +439,20 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
             if currentDateRange == con.DateRange:
                 f.write("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' ' ||"+context+"\n")
             else:
-                f.write(con.DateRange.HTML()+"||"+context+"\n")
+                if con.Cancelled:
+                    f.write("<s>"+str(con.DateRange)+"</s>||<s>"+context+"</s>\n")
+                else:
+                    f.write(str(con.DateRange)+"||"+context+"\n")
                 currentDateRange=con.DateRange
         else:
             # When the current date range changes, we put the new date range in the 1st column of the table
             currentYear = con.DateRange._startdate.Year
             currentDateRange=con.DateRange
             f.write('colspan="2"| '+"<big><big>'''"+str(currentYear)+"'''</big></big>\n")
-            f.write(str(con.DateRange)+"||"+context+"\n")
+            if con.Cancelled:
+                f.write("<s>"+str(con.DateRange)+"</s>||<s>"+context+"</s>\n")
+            else:
+                f.write(str(con.DateRange)+"||"+context+"\n")
     f.write("</tab>")
     f.write("{{conrunning}}\n[[Category:List]]\n")
 
