@@ -428,11 +428,14 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
         if len(conloctext) > 0:
             conloctext="&nbsp;&nbsp;&nbsp;<small>("+conloctext+")</small>"
         # Format the convention name and location for tabular output
-        context=str(con.Text)+conloctext
+        context=str(con.Text)
         if con.Cancelled:
             context="<s>"+context+"</s>"
         if con.Virtual:
             context+=" (virtual)"
+        else:
+            context+=conloctext
+
         # Now write the line
         # We do a year header for each new year, so we need to detect when the current year changes
         if currentYear == con.DateRange._startdate.Year:
