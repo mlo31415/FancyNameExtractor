@@ -83,36 +83,6 @@ for pageFname in allFancy3PagesFnames:
                 Log(str(l), noNewLine=True)
 Log("\n   "+str(len(fancyPagesDictByWikiname))+" semi-unique links found")
 
-# A FancyPage has an UltimateRedirect which can only be filled in once all the redirects are known.
-# Run through the pages and fill in UltimateRedirect.
-def UltimateRedirectName(fancyPagesDictByWikiname: Dict[str, F3Page], redirect: str, recurse: bool=False) -> str:
-    global recurselist
-    if not recurse:
-        recurselist=[]
-    if redirect in recurselist:
-        Log("Recursion loop: "+str(recurselist))
-        return redirect
-    recurselist.append(redirect)
-    assert redirect is not None
-    if redirect not in fancyPagesDictByWikiname.keys():  # Target of redirect does not exist, so this redirect is the ultimate redirect
-        return redirect
-    if fancyPagesDictByWikiname[redirect] is None:       # Target of redirect does not exist, so this redirect is the ultimate redirect
-        return redirect
-    if fancyPagesDictByWikiname[redirect].Redirect is None: # Target is a real page, so that real page is the ultimate redirect
-        return fancyPagesDictByWikiname[redirect].Name
-
-    return UltimateRedirectName(fancyPagesDictByWikiname, fancyPagesDictByWikiname[redirect].Redirect, recurse=True)
-
-# Fill in the UltimateRedirect element
-Log("***Computing redirect structure")
-num=0
-for fancyPage in fancyPagesDictByWikiname.values():
-    if fancyPage.Redirect is not None:
-        num+=1
-        fancyPage.UltimateRedirect=UltimateRedirectName(fancyPagesDictByWikiname, fancyPage.Redirect)
-Log("   "+str(num)+" redirects found", Print=False)
-
-
 # Build a locale database
 Log("\n\n***Building a locale dictionary")
 locales=set()  # We use a set to eliminate duplicates and to speed checks
@@ -346,7 +316,8 @@ for page in fancyPagesDictByWikiname.values():
                         m=re.match("@@([^|%]+)(\|?)([^%]*)%%(:?.*)$", conname)
                         if m is not None:
                             conname=m.groups()[0]
-                        conname=UltimateRedirectName(fancyPagesDictByWikiname, conname)
+                        if conname in fancyPagesDictByWikiname.keys() and fancyPagesDictByWikiname[conname].IsRedirectpage:
+                            conname=fancyPagesDictByWikiname[conname].Redirect
 
                         # There will be at most two dates, and at most one that is not cancelled
                         # So we have the following possibilities: (d), (d, dc1), (dc1), (dc1, dc2)
@@ -367,7 +338,9 @@ for page in fancyPagesDictByWikiname.values():
             for place in m:
                 place=WikiExtractLink(place)
                 # Find the convention in the conventions dictionary and add the location if appropriate.
-                conname=UltimateRedirectName(fancyPagesDictByWikiname, page.Name)
+                conname=page.Name
+                if page.IsRedirectpage:
+                    conname=page.Redirect
                 conkey=ConKey(conname, FanzineDateRange())
                 if conkey not in conventions.keys():
                     Log("Convention "+conkey+" not in Conseries",isError=True)
