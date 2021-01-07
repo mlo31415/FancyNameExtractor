@@ -64,20 +64,23 @@ Log("   "+str(len(allFancy3PagesFnames))+" pages found")
 
 fancyPagesDictByWikiname={}     # Key is page's canname; Val is a FancyPage class containing all the references on the page
 
+ignoredPagePrefixes=["Template;colon;", "Log 202"]
+ignoredPages=["Standards", "Admin"]
+
 Log("***Reading local copies of pages and scanning for links")
 for pageFname in allFancy3PagesFnames:
-    if pageFname.startswith("Log 202"):     # Ignore Log files in the site directory
-        continue
-    val=DigestPage(fancySitePath, pageFname)
-    if val is not None:
-        fancyPagesDictByWikiname[val.Name]=val
-    l=len(fancyPagesDictByWikiname)
-    if l%1000 == 0:
-        if l > 1000:
-            Log("--",noNewLine=True)
-        if l%20000 == 0:
-            Log("")
-        Log(str(l), noNewLine=True)
+    if pageFname not in ignoredPages:
+        if all(pageFname.startswith(s) is False for s in ignoredPagePrefixes):
+            val=DigestPage(fancySitePath, pageFname)
+            if val is not None:
+                fancyPagesDictByWikiname[val.Name]=val
+            l=len(fancyPagesDictByWikiname)
+            if l%1000 == 0:
+                if l > 1000:
+                    Log("--",noNewLine=True)
+                if l%20000 == 0:
+                    Log("")
+                Log(str(l), noNewLine=True)
 Log("\n   "+str(len(fancyPagesDictByWikiname))+" semi-unique links found")
 
 # A FancyPage has an UltimateRedirect which can only be filled in once all the redirects are known.
