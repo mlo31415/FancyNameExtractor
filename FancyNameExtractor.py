@@ -268,6 +268,9 @@ for page in fancyPagesDictByWikiname.values():
                 Log("***Can't find Date(s)' column in conseries page "+page.Name, isError=True)
 
             # Walk the convention table
+            if page.Table.Rows is None:
+                Log("***Table has no rows: "+page.Name, isError=True)
+                continue
             for row in page.Table.Rows:
 
                 # Look for a text flag indicating that the convention was held virtually or was cancelled
@@ -374,7 +377,7 @@ for page in fancyPagesDictByWikiname.values():
                     if old.Loc == "":   # If there previously was no location from the con series page, substitute what we found in the con instance page
                         old.Loc=place
                         continue
-                    Log("+++"+conname+"Location mismatch: '"+place+"' != '"+old.Loc+"'")
+                    Log("+++"+conname+": Location mismatch: '"+place+"' != '"+old.Loc+"'")
 
 
 # Convert the con dictionary to a list and sort it in date order
