@@ -435,6 +435,7 @@ corrections={
 #             newlocs.add(loc)
 #     conventionLocations[conname]=newlocs
 
+# ...
 Log("Writing Convention timeline (Fancy).txt")
 with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
     f.write("This is a chronological list of SF conventions automatically extracted from Fancyclopedia 3\n\n")
@@ -488,6 +489,7 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
     f.write("</tab>")
     f.write("{{conrunning}}\n[[Category:List]]\n")
 
+# ...
 # OK, now we have a dictionary of all the pages on Fancy 3, which contains all of their outgoing links
 # Build up a dictionary of redirects.  It is indexed by the canonical name of a page and the value is the canonical name of the ultimate redirect
 # Build up an inverse list of all the pages that redirect *to* a given page, also indexed by the page's canonical name. The value here is a list of canonical names.
@@ -519,6 +521,7 @@ with open("Untagged locales.txt", "w+", encoding='utf-8') as f:
                                 if inverse[1:] != inverse[1:].lower() and " " in inverse:   # There's a capital letter after the 1st and also a space
                                     f.write(fancyPage.Name+" is pointed to by "+inverse+" which is not a Locale\n")
 
+# ...
 # Create a dictionary of page references for people pages.
 # The key is a page's canonical name; the value is a list of pages at which they are referenced.
 
@@ -537,6 +540,7 @@ for fancyPage in fancyPagesDictByWikiname.values():
             if outRef.LinkWikiName in peopleReferences.keys():    # So it's a people
                 peopleReferences[outRef.LinkWikiName].append(fancyPage.Name)
 
+# ...
 Log("***Writing reports")
 # Write out a file containing canonical names, each with a list of pages which refer to it.
 # The format will be
@@ -553,6 +557,7 @@ with open("Referring pages.txt", "w+", encoding='utf-8') as f:
         for pagename in referringpagelist:
             f.write("  "+pagename+"\n")
 
+# ...
 # Now a list of redirects.
 # We use basically the same format:
 #   **<target page>
@@ -577,6 +582,7 @@ with open("Redirects with missing target.txt", "w+", encoding='utf-8') as f:
             f.write(key+" --> "+dest+"\n")
 
 
+# ...
 # Create and write out a file of peoples' names. They are taken from the titles of pages marked as fan or pro
 
 # Ambiguous names will often end with something in parenthesis which need to be removed for this particular file
