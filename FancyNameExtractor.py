@@ -31,21 +31,8 @@ from FanzineIssueSpecPackage import FanzineDateRange
 #       URLname -- the name of the Mediawiki page in a URL
 #                       Basically, spaces are replaced by underscores and the first character is always UC.  #TODO: What about colons? Other special characters?
 #       WindowsFilename -- the name of the Windows file in the in the local site: converted using methods in HelperPackage. These names can be derived from the Mediawiki page name and vice-versa.
-#       WikiDisplayname -- the display name in MediaWiki: Normally the name of the page, but can be overridden on the page using DISPLAYTITLE
 #
 #       The URLname and WindowsFilename can be derived from the WikiPagename, but not necessarily vice-versa
-
-#TODO: Revise this
-
-# There will be a dictionary, nameVariants, indexed by every form of every name. The value will be the canonical form of the name.
-# There will be a second dictionary, people, indexed by the canonical name and containing an unordered list of Reference structures
-# A Reference will contain:
-#       The canonical name
-#       The as-used name
-#       An importance code (initially 1, 2 or 3 with 3 being least important)
-#       If a reference to Fancy, the name of the page (else None)
-#       If a reference to fanac.org, the URL of the relevant page (else None)
-#       If a redirect, the redirect name
 
 fancySitePath=r"C:\Users\mlo\Documents\usr\Fancyclopedia\Python\site"   # A local copy of the site maintained by FancyDownloader
 LogOpen("Log.txt", "Log Error.txt")
@@ -60,7 +47,8 @@ Log("***Querying the local copy of Fancy 3 to create a list of all Fancyclopedia
 Log("   path='"+fancySitePath+"'")
 allFancy3PagesFnames = [f[:-4] for f in os.listdir(fancySitePath) if os.path.isfile(os.path.join(fancySitePath, f)) and f[-4:] == ".txt"]
 allFancy3PagesFnames = [cn for cn in allFancy3PagesFnames if not cn.startswith("index_")]     # Drop index pages
-#allFancy3PagesFnames= [f for f in allFancy3PagesFnames if f[0:2].lower() == "sm"]        # Just to cut down the number of pages for debugging purposes
+#allFancy3PagesFnames= [f for f in allFancy3PagesFnames if f[0:6].lower() == "windyc" or f[0:5].lower() == "new z"]        # Just to cut down the number of pages for debugging purposes
+#allFancy3PagesFnames= [f for f in allFancy3PagesFnames if f[0:5].lower() == "trinc"]        # Just to cut down the number of pages for debugging purposes
 Log("   "+str(len(allFancy3PagesFnames))+" pages found")
 
 fancyPagesDictByWikiname={}     # Key is page's canname; Val is a FancyPage class containing all the references on the page
@@ -178,15 +166,15 @@ def ScanForLocales(locales: Set[str], s: str) -> Optional[Set[str]]:
 
 
 #------------------------------------
-# Just a simple class to conveniently wrap a bunch ofn data
-class ConDates:
+# Just a simple class to conveniently wrap a bunch of data
+class ConInfo:
     def __init__(self, Link: str="", Text: str="", Loc: str="", DateRange: FanzineDateRange=FanzineDateRange(), Virtual: bool=False, Cancelled: bool=False):
-        self.Link=Link
-        self.Text=Text
-        self.Loc=Loc
-        self.DateRange=DateRange
-        self.Virtual=Virtual
-        self.Cancelled=Cancelled
+        self.Link: str=Link  # The actual text of the link on the series page
+        self.Text: str=Text  # The displayed text for that link on the series page
+        self.Loc: str=Loc
+        self.DateRange: FanzineDateRange=DateRange
+        self.Virtual: bool=Virtual
+        self.Cancelled: bool=Cancelled
 
     def __str__(self) -> str:
         s=self.Link+" "+self.Text+" "+str(self.DateRange)+" "+self.Loc
@@ -243,27 +231,27 @@ for page in fancyPagesDictByWikiname.values():
     if "Conseries" in page.Tags:
         LogSetHeader("Processing "+page.Name)
         # We'd like to find the columns containing:
-        loccol=None     # The convention's location
-        concol=None     # The convention's name
-        datecol=None    # The conventions dates
+        locColumn=None     # The convention's location
+        conColumn=None     # The convention's name
+        dateColumn=None    # The conventions dates
         if page.Table is not None:
             LogSetHeader("Processing conseries "+page.Name)
 
             listLocationHeaders=["Location"]
-            loccol=Crosscheck(listLocationHeaders, page.Table.Headers)
+            locColumn=Crosscheck(listLocationHeaders, page.Table.Headers)
             # We don't log a missing location column because that is common and not an error
 
             listNameHeaders=["Convention", "Convention Name", "Name"]
-            concol=Crosscheck(listNameHeaders, page.Table.Headers)
-            if concol is None:
+            conColumn=Crosscheck(listNameHeaders, page.Table.Headers)
+            if conColumn is None:
                 Log("***Can't find convention column in conseries page "+page.Name, isError=True)
 
             listDateHeaders=["Date", "Dates"]
-            datecol=Crosscheck(listDateHeaders, page.Table.Headers)
-            if concol is None:
+            dateColumn=Crosscheck(listDateHeaders, page.Table.Headers)
+            if conColumn is None:
                 Log("***Can't find Date(s)' column in conseries page "+page.Name, isError=True)
 
-            # Walk the convention table
+            # Walk the convention table, extracting the individual conventions
             if page.Table.Rows is None:
                 Log("***Table has no rows: "+page.Name, isError=True)
                 continue
@@ -275,7 +263,7 @@ for page in fancyPagesDictByWikiname.values():
                 cPat=re.compile("[(]?cancelled[)]?", re.IGNORECASE)
                 for index, col in enumerate(row):
                     # If this is the convention column, we don't want to remove the virtual designation because it's sometimes used as part of the con's name
-                    if concol is not None and index == concol:
+                    if conColumn is not None and index == conColumn:
                         m=vPat.match(col)
                         if m is not None:
                             virtual=True
@@ -295,19 +283,19 @@ for page in fancyPagesDictByWikiname.values():
 
                 # If the con series table has a location, extract it
                 conloc=""
-                if concol is not None and loccol is not None:
-                    if loccol < len(row) and len(row[loccol]) > 0 and concol < len(row) and len(row[concol]) > 0:
-                        con=WikiExtractLink(row[concol])
-                        loc=WikiExtractLink(row[loccol])
+                if conColumn is not None and locColumn is not None:
+                    if locColumn < len(row) and len(row[locColumn]) > 0 and conColumn < len(row) and len(row[conColumn]) > 0:
+                        con=WikiExtractLink(row[conColumn])
+                        loc=WikiExtractLink(row[locColumn])
                         conloc=BaseFormOfLocaleName(localeBaseForms, loc)
                         Log("   Conseries: "+con+" is at " + conloc)
 
                 # If the conseries has a date, add the convention to the list
-                if concol is not None and datecol is not None:
-                    if concol < len(row) and len(row[concol]) > 0  and datecol < len(row) and len(row[datecol]) > 0:
+                if conColumn is not None and dateColumn is not None:
+                    if conColumn < len(row) and len(row[conColumn]) > 0  and dateColumn < len(row) and len(row[dateColumn]) > 0:
                         # Ignore anything in trailing parenthesis
                         p=re.compile("\(.*\)\s?$")
-                        datestr=p.sub("", row[datecol])
+                        datestr=p.sub("", row[dateColumn])
                         # Convert the HTML characters some people have inserted into their ascii equivalents
                         datestr=datestr.replace("&nbsp;", " ").replace("&#8209;", "-")
 
@@ -330,14 +318,14 @@ for page in fancyPagesDictByWikiname.values():
 
                         # There should be at least one interpretable date range
                         if all(x is None for x in fdr) or all(x is None or (x is not None and x.IsEmpty()) for x in fdr):
-                            Log("***Could not interpret "+row[concol]+"'s date range: "+row[datecol], isError=True)
+                            Log("***Could not interpret "+row[conColumn]+"'s date range: "+row[dateColumn], isError=True)
                             continue
 
                         # Get the convention name
                         # [[xxx]]
                         # [[xxx|yyy]]               Use just xxx
                         # [[xxx|yyy]]: zzz          Ignore the ": "zzz"
-                        conname=row[concol].replace("[[", "@@").replace("]]","%%")  # The square brackets are Regex special characters. This makes the pattern simpler
+                        conname=row[conColumn].replace("[[", "@@").replace("]]", "%%")  # The square brackets are Regex special characters. This makes the pattern simpler
                         # Match ''[['' then <stuff> then maybe '|' followed by <stuff> then ']]' then maybe (':' followed by styff) then EOL
                         m=re.match("@@([^|%]+)(\|?)([^%]*)%%(:?.*)$", conname)
                         if m is not None:
@@ -348,11 +336,11 @@ for page in fancyPagesDictByWikiname.values():
                         # So we have the following possibilities: (d), (d, dc1), (dc1), (dc1, dc2)
                         # Now add the convention entries
                         if fdr[0] is not None and not fdr[0].IsEmpty():
-                            ConAdd(conventions, conname, fdr[0], ConDates(Link=conname, Text=row[concol], Loc=conloc, DateRange=fdr[0], Virtual=virtual, Cancelled=True))      # We merge conventions with the same name and year
+                            ConAdd(conventions, conname, fdr[0], ConInfo(Link=conname, Text=row[conColumn], Loc=conloc, DateRange=fdr[0], Virtual=virtual, Cancelled=True))      # We merge conventions with the same name and year
                         if fdr[1] is not None and not fdr[1].IsEmpty():
-                            ConAdd(conventions, conname, fdr[1], ConDates(Link=conname, Text=row[concol], Loc=conloc, DateRange=fdr[1], Virtual=virtual, Cancelled=True))      # We merge conventions with the same name and year
+                            ConAdd(conventions, conname, fdr[1], ConInfo(Link=conname, Text=row[conColumn], Loc=conloc, DateRange=fdr[1], Virtual=virtual, Cancelled=True))      # We merge conventions with the same name and year
                         if fdr[2] is not None and not fdr[2].IsEmpty():
-                            ConAdd(conventions, conname, fdr[2], ConDates(Link=conname, Text=row[concol], Loc=conloc, DateRange=fdr[2], Virtual=virtual))      # We merge conventions with the same name and year
+                            ConAdd(conventions, conname, fdr[2], ConInfo(Link=conname, Text=row[conColumn], Loc=conloc, DateRange=fdr[2], Virtual=virtual))      # We merge conventions with the same name and year
 
 # OK, all of the con series have been mined.  Now let's look through all the con instances and see if we can get more location information from them.
 # (Not all con series tables contain location information.)
@@ -598,7 +586,6 @@ def IsInterestingName(p: str) -> bool:
         if re.search(" ([A-Z]|de|ha|von|Č)", p) is None:  # We want to ignore "Bob tucker"
             return False
     return True
-
 
 Log("Writing: Peoples names.txt")
 peopleNames=set()
