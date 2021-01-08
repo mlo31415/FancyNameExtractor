@@ -26,7 +26,8 @@ from FanzineIssueSpecPackage import FanzineDateRange
 
 # For Fancy 3 on MediaWiki, there are many names to keep track of for each page:
 #       The actual, real-world name.  But this can't always be used for a filename on Windows or a page name in Mediawiki, so:
-#       WikiPagename -- the name of the MediaWiki page it was created with and as it appears in a simple Mediawiki link.
+#       WikiPagename -- the name of the MediaWiki page it was created with.
+#       DisplayName -- The name that appears on the page. It may have been over-ridden using DISPLAYTITLE
 #       URLname -- the name of the Mediawiki page in a URL
 #                       Basically, spaces are replaced by underscores and the first character is always UC.  #TODO: What about colons? Other special characters?
 #       WindowsFilename -- the name of the Windows file in the in the local site: converted using methods in HelperPackage. These names can be derived from the Mediawiki page name and vice-versa.
@@ -74,6 +75,7 @@ for pageFname in allFancy3PagesFnames:
             val=DigestPage(fancySitePath, pageFname)
             if val is not None:
                 fancyPagesDictByWikiname[val.Name]=val
+            # Print a progress indicator
             l=len(fancyPagesDictByWikiname)
             if l%1000 == 0:
                 if l > 1000:
@@ -81,6 +83,7 @@ for pageFname in allFancy3PagesFnames:
                 if l%20000 == 0:
                     Log("")
                 Log(str(l), noNewLine=True)
+
 Log("\n   "+str(len(fancyPagesDictByWikiname))+" semi-unique links found")
 
 # Build a locale database
@@ -207,9 +210,9 @@ def ConAdd(conlist: Dict[str], conname: str, condate: FanzineDateRange, val: Con
             Log("   new="+str(val), isError=True)
     conlist[key]=val
 
-# We use a dictionary to eliminate duplicates
-# It is keyed by the lower(conventionInstanceName)+conventionInstanceYear
-# The value is a ConDates class instance
+# Create a dictionary of conventions with useful information about them.
+# The key is the Wiki name of the convention instance page
+# The value is a ConInfo structure which holds a bunch of useful info
 conventions={}
 for page in fancyPagesDictByWikiname.values():
 
