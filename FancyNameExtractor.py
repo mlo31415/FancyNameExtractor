@@ -325,7 +325,9 @@ for page in fancyPagesDictByWikiname.values():
                         # [[xxx]]
                         # [[xxx|yyy]]               Use just xxx
                         # [[xxx|yyy]]: zzz          Ignore the ": "zzz"
-                        conname=row[conColumn].replace("[[", "@@").replace("]]", "%%")  # The square brackets are Regex special characters. This makes the pattern simpler
+                        # (Ignore <s>...</s> if present.)
+                        conname=row[conColumn].replace("<s>", "").replace("</s>", "")
+                        conname=conname.replace("[[", "@@").replace("]]", "%%")  # The square brackets are Regex special characters. This makes the pattern simpler
                         # Match ''[['' then <stuff> then maybe '|' followed by <stuff> then ']]' then maybe (':' followed by styff) then EOL
                         m=re.match("@@([^|%]+)(\|?)([^%]*)%%(:?.*)$", conname)
                         if m is not None:
