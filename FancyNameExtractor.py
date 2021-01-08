@@ -86,6 +86,14 @@ for pageFname in allFancy3PagesFnames:
 
 Log("\n   "+str(len(fancyPagesDictByWikiname))+" semi-unique links found")
 
+Log("Build the redirects table")
+g_cannonicalNames={}
+for val in fancyPagesDictByWikiname.values():
+    if val.IsRedirectpage:
+        g_cannonicalNames[val.Name]=val.Redirect
+    else:
+        g_cannonicalNames[val.Name]=val.Name
+
 # Build a locale database
 Log("\n\n***Building a locale dictionary")
 locales=set()  # We use a set to eliminate duplicates and to speed checks
@@ -188,6 +196,11 @@ class ConDates:
             s+=" virtual=True"
         return s
 
+    @property
+    def CannonicalName(self) -> str:
+        return CannonicalName(self.Link)
+
+
 Log("***Analyzing convention series tables")
 
 # Is at least one item in inputlist also in checklist?
@@ -200,7 +213,17 @@ def Crosscheck(inputList, checkList) -> bool:
 def ConKey(conname: str, condate: FanzineDateRange) -> str:
     return conname#.lower()#+"$"+str(condate._startdate.Year)
 
-def ConAdd(conlist: Dict[str], conname: str, condate: FanzineDateRange, val: ConDates) -> None:
+def CannonicalName(name: str) -> str:
+    if name is None or name == "":
+        return ""
+    assert len(g_cannonicalNames) > 0
+    if name not in g_cannonicalNames.keys():
+        Log("CannonicalName error: '"+name+"' for found in cannonicalNames")
+        return name
+    return g_cannonicalNames[name]
+
+def ConAdd(conlist: Dict[str], conname: str, condate: FanzineDateRange, val: ConInfo) -> None:
+    conname=CannonicalName(conname)
     key=ConKey(conname, condate)
     if key in conlist.keys():
         old=conlist[key]
@@ -319,8 +342,7 @@ for page in fancyPagesDictByWikiname.values():
                         m=re.match("@@([^|%]+)(\|?)([^%]*)%%(:?.*)$", conname)
                         if m is not None:
                             conname=m.groups()[0]
-                        if conname in fancyPagesDictByWikiname.keys() and fancyPagesDictByWikiname[conname].IsRedirectpage:
-                            conname=fancyPagesDictByWikiname[conname].Redirect
+                        conname=CannonicalName(conname) # Convert to the connonical name
 
                         # There will be at most two dates, and at most one that is not cancelled
                         # So we have the following possibilities: (d), (d, dc1), (dc1), (dc1, dc2)
