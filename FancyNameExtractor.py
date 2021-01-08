@@ -354,28 +354,29 @@ for page in fancyPagesDictByWikiname.values():
                         if fdr[2] is not None and not fdr[2].IsEmpty():
                             ConAdd(conventions, conname, fdr[2], ConDates(Link=conname, Text=row[concol], Loc=conloc, DateRange=fdr[2], Virtual=virtual))      # We merge conventions with the same name and year
 
-# OK, all of the con seres have been mined.  Now let's look for con instances and see if we can get more location information from them.
-for page in fancyPagesDictByWikiname.values():
-    # If it's an individual convention page, we search through its text for something that looks like a placename.
-    if "Convention" in page.Tags and "Conseries" not in page.Tags:
-        m=ScanForLocales(locales, page.Source)
-        if m is not None:
-            for place in m:
-                place=WikiExtractLink(place)
-                # Find the convention in the conventions dictionary and add the location if appropriate.
-                conname=page.Name
-                if page.IsRedirectpage:
-                    conname=page.Redirect
-                conkey=ConKey(conname, FanzineDateRange())
-                if conkey not in conventions.keys():
-                    Log("Convention "+conkey+" not in Conseries",isError=True)
-                    continue
-                old=conventions[conkey]
-                if place != old.Loc:
-                    if old.Loc == "":   # If there previously was no location from the con series page, substitute what we found in the con instance page
-                        old.Loc=place
+# OK, all of the con series have been mined.  Now let's look through all the con instances and see if we can get more location information from them.
+# (Not all con series tables contain location information.)
+# Generate a report of cases where we have non-identical con information from both sources.
+with open("Con location discrepancies.txt", "w+", encoding='utf-8') as f:
+    for page in fancyPagesDictByWikiname.values():
+        # If it's an individual convention page, we search through its text for something that looks like a placename.
+        if "Convention" in page.Tags and "Conseries" not in page.Tags:
+            m=ScanForLocales(locales, page.Source)
+            if m is not None:
+                for place in m:
+                    place=WikiExtractLink(place)
+                    # Find the convention in the conventions dictionary and add the location if appropriate.
+                    conname=CannonicalName(page.Name)
+                    conkey=ConKey(conname, FanzineDateRange())
+                    if conkey not in conventions.keys():
+                        Log("Convention "+conkey+" not in Conseries",isError=True)
                         continue
-                    Log("+++"+conname+": Location mismatch: '"+place+"' != '"+old.Loc+"'")
+                    old=conventions[conkey]
+                    if place != old.Loc:
+                        if old.Loc == "":   # If there previously was no location from the con series page, substitute what we found in the con instance page
+                            old.Loc=place
+                            continue
+                        f.write(conname+": Location mismatch: '"+place+"' != '"+old.Loc+"'\n")
 
 
 # Convert the con dictionary to a list and sort it in date order
