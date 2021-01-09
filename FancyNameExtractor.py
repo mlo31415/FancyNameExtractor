@@ -234,64 +234,66 @@ for page in fancyPagesDictByWikiname.values():
         locColumn=None     # The convention's location
         conColumn=None     # The convention's name
         dateColumn=None    # The conventions dates
-        if page.Table is not None:
+        for table in page.Table:
             LogSetHeader("Processing conseries "+page.Name)
 
             listLocationHeaders=["Location"]
-            locColumn=Crosscheck(listLocationHeaders, page.Table.Headers)
+            locColumn=Crosscheck(listLocationHeaders, table.Headers)
             # We don't log a missing location column because that is common and not an error
 
             listNameHeaders=["Convention", "Convention Name", "Name"]
-            conColumn=Crosscheck(listNameHeaders, page.Table.Headers)
+            conColumn=Crosscheck(listNameHeaders, table.Headers)
             if conColumn is None:
                 Log("***Can't find convention column in conseries page "+page.Name, isError=True)
 
             listDateHeaders=["Date", "Dates"]
-            dateColumn=Crosscheck(listDateHeaders, page.Table.Headers)
+            dateColumn=Crosscheck(listDateHeaders, table.Headers)
             if conColumn is None:
-                Log("***Can't find Date(s)' column in conseries page "+page.Name, isError=True)
+                Log("***Can't find Dates' column in conseries page "+page.Name, isError=True)
 
-            # Walk the convention table, extracting the individual conventions
-            if page.Table.Rows is None:
-                Log("***Table has no rows: "+page.Name, isError=True)
-                continue
-            for row in page.Table.Rows:
+            if conColumn is not None and dateColumn is not None:
 
-                # Look for a text flag indicating that the convention was held virtually or was cancelled
-                virtual=False
-                vPat=re.compile("[(]?(?:virtual|online|held online|moved online)[)]?", re.IGNORECASE)
-                cPat=re.compile("[(]?cancelled[)]?", re.IGNORECASE)
-                for index, col in enumerate(row):
-                    # If this is the convention column, we don't want to remove the virtual designation because it's sometimes used as part of the con's name
-                    if conColumn is not None and index == conColumn:
-                        m=vPat.match(col)
-                        if m is not None:
-                            virtual=True
-                    else:
-                        # But for other columns, we want to remove the designation as it will just confuse later processing.
-                        newcol=vPat.sub("", col)
+                # Walk the convention table, extracting the individual conventions
+                # (Sometimes there will be multiple table
+                if table.Rows is None:
+                    Log("***Table has no rows: "+page.Name, isError=True)
+                    continue
+                for row in table.Rows:
+
+                    # Look for a text flag indicating that the convention was held virtually or was cancelled
+                    virtual=False
+                    vPat=re.compile("[(]?(?:virtual|online|held online|moved online)[)]?", re.IGNORECASE)
+                    cPat=re.compile("[(]?cancelled[)]?", re.IGNORECASE)
+                    for index, col in enumerate(row):
+                        # If this is the convention column, we don't want to remove the virtual designation because it's sometimes used as part of the con's name
+                        if conColumn is not None and index == conColumn:
+                            m=vPat.match(col)
+                            if m is not None:
+                                virtual=True
+                        else:
+                            # But for other columns, we want to remove the designation as it will just confuse later processing.
+                            newcol=vPat.sub("", col)
+                            if col != newcol:
+                                virtual=True
+                                row[index]=newcol
+                                col=newcol
+                        # Now check for a cancelled flag
+                        newcol=cPat.sub("", col)
                         if col != newcol:
-                            virtual=True
+                            cancelled=True
                             row[index]=newcol
                             col=newcol
-                    # Now check for a cancelled flag
-                    newcol=cPat.sub("", col)
-                    if col != newcol:
-                        cancelled=True
-                        row[index]=newcol
-                        col=newcol
 
-                # If the con series table has a location, extract it
-                conloc=""
-                if conColumn is not None and locColumn is not None:
-                    if locColumn < len(row) and len(row[locColumn]) > 0 and conColumn < len(row) and len(row[conColumn]) > 0:
-                        con=WikiExtractLink(row[conColumn])
-                        loc=WikiExtractLink(row[locColumn])
-                        conloc=BaseFormOfLocaleName(localeBaseForms, loc)
-                        Log("   Conseries: "+con+" is at " + conloc)
+                    # If the con series table has a location, extract it
+                    conloc=""
+                    if conColumn is not None and locColumn is not None:
+                        if locColumn < len(row) and len(row[locColumn]) > 0 and conColumn < len(row) and len(row[conColumn]) > 0:
+                            con=WikiExtractLink(row[conColumn])
+                            loc=WikiExtractLink(row[locColumn])
+                            conloc=BaseFormOfLocaleName(localeBaseForms, loc)
+                            Log("   Conseries: "+con+" is at " + conloc)
 
-                # If the conseries has a date, add the convention to the list
-                if conColumn is not None and dateColumn is not None:
+                    # If the conseries has a date, add the convention to the list
                     if conColumn < len(row) and len(row[conColumn]) > 0  and dateColumn < len(row) and len(row[dateColumn]) > 0:
                         # Ignore anything in trailing parenthesis
                         p=re.compile("\(.*\)\s?$")
