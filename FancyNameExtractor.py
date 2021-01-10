@@ -75,12 +75,12 @@ for pageFname in allFancy3PagesFnames:
 Log("\n   "+str(len(fancyPagesDictByWikiname))+" semi-unique links found")
 
 Log("Build the redirects table")
-g_cannonicalNames={}
+g_canonicalNames={}
 for val in fancyPagesDictByWikiname.values():
     if val.IsRedirectpage:
-        g_cannonicalNames[val.Name]=val.Redirect
+        g_canonicalNames[val.Name]=val.Redirect
     else:
-        g_cannonicalNames[val.Name]=val.Name
+        g_canonicalNames[val.Name]=val.Name
 
 # Build a locale database
 Log("\n\n***Building a locale dictionary")
@@ -186,7 +186,7 @@ class ConInfo:
 
     @property
     def CannonicalName(self) -> str:
-        return CannonicalName(self.Link)
+        return CanonicalName(self.Link)
 
 
 Log("***Analyzing convention series tables")
@@ -201,17 +201,17 @@ def Crosscheck(inputList, checkList) -> bool:
 def ConKey(conname: str, condate: FanzineDateRange) -> str:
     return conname#.lower()#+"$"+str(condate._startdate.Year)
 
-def CannonicalName(name: str) -> str:
+def CanonicalName(name: str) -> str:
     if name is None or name == "":
         return ""
     assert len(g_cannonicalNames) > 0
     if name not in g_cannonicalNames.keys():
         Log("CannonicalName error: '"+name+"' for found in cannonicalNames")
         return name
-    return g_cannonicalNames[name]
+    return g_canonicalNames[name]
 
 def ConAdd(conlist: Dict[str], conname: str, condate: FanzineDateRange, val: ConInfo) -> None:
-    conname=CannonicalName(conname)
+    conname=CanonicalName(conname)
     key=ConKey(conname, condate)
     if key in conlist.keys():
         old=conlist[key]
@@ -358,7 +358,7 @@ with open("Con location discrepancies.txt", "w+", encoding='utf-8') as f:
                 for place in m:
                     place=WikiExtractLink(place)
                     # Find the convention in the conventions dictionary and add the location if appropriate.
-                    conname=CannonicalName(page.Name)
+                    conname=CanonicalName(page.Name)
                     conkey=ConKey(conname, FanzineDateRange())
                     if conkey not in conventions.keys():
                         Log("Convention "+conkey+" not in Conseries",isError=True)
