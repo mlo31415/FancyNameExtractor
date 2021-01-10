@@ -204,9 +204,11 @@ def ConKey(conname: str, condate: FanzineDateRange) -> str:
 def CanonicalName(name: str) -> str:
     if name is None or name == "":
         return ""
-    assert len(g_cannonicalNames) > 0
-    if name not in g_cannonicalNames.keys():
-        Log("CannonicalName error: '"+name+"' for found in cannonicalNames")
+    assert len(g_canonicalNames) > 0
+    # Because Mediawiki always forces the 1st character of a page name to be UC, make it so here.
+    name=name[0].upper()+name[1:]
+    if name not in g_canonicalNames.keys():
+        Log("CanonicalName error: '"+name+"' not found in canonicalNames")
         return name
     return g_canonicalNames[name]
 
@@ -235,6 +237,7 @@ for page in fancyPagesDictByWikiname.values():
         conColumn=None     # The convention's name
         dateColumn=None    # The conventions dates
         for table in page.Table:
+            numcolumns=len(table.Headers)
             LogSetHeader("Processing conseries "+page.Name)
 
             listLocationHeaders=["Location"]
@@ -258,93 +261,120 @@ for page in fancyPagesDictByWikiname.values():
                 if table.Rows is None:
                     Log("***Table has no rows: "+page.Name, isError=True)
                     continue
-                for row in table.Rows:
 
-                    # Look for a text flag indicating that the convention was held virtually or was cancelled
-                    virtual=False
-                    vPat=re.compile("[(]?(?:virtual|online|held online|moved online)[)]?", re.IGNORECASE)
+                # In the (probably pointless) quest for speed, we compile the patterns outside the loop over rows...
+                # We want to handle the case where (virtual) is in parens, but also when it isn't.
+                # We need two patterns here because Python's regex doesn't have balancing groups and we don't want to match unbalanced parens
+                alternatives="virtual|online|held online|moved online|virtual convention"
+                vPat1=re.compile("(\(?:"+alternatives+"\))", re.IGNORECASE)  # With parens
+                vPat2=re.compile("(?:"+alternatives+")", re.IGNORECASE)  # W/o parens
+
+                for row in table.Rows:
+                    # Skip empty or part-empty rows or rows with merged columns
+                    if len(row) < numcolumns-1 or len(row[conColumn]) == 0  or len(row[dateColumn]) == 0:
+                        continue
+
+                    # Look for a text flag indicating that the convention was cancelled
                     cPat=re.compile("[(]?cancelled[)]?", re.IGNORECASE)
+                    # Check for a cancelled flag in any column and remove it
                     for index, col in enumerate(row):
-                        # If this is the convention column, we don't want to remove the virtual designation because it's sometimes used as part of the con's name
-                        if conColumn is not None and index == conColumn:
-                            m=vPat.match(col)
-                            if m is not None:
-                                virtual=True
-                        else:
-                            # But for other columns, we want to remove the designation as it will just confuse later processing.
-                            newcol=vPat.sub("", col)
-                            if col != newcol:
-                                virtual=True
-                                row[index]=newcol
-                                col=newcol
-                        # Now check for a cancelled flag
                         newcol=cPat.sub("", col)
                         if col != newcol:
                             cancelled=True
                             row[index]=newcol
                             col=newcol
 
-                    # If the con series table has a location, extract it
+                    # If the con series table has a location column, extract the location
                     conloc=""
-                    if conColumn is not None and locColumn is not None:
+                    if locColumn is not None:
                         if locColumn < len(row) and len(row[locColumn]) > 0 and conColumn < len(row) and len(row[conColumn]) > 0:
                             con=WikiExtractLink(row[conColumn])
                             loc=WikiExtractLink(row[locColumn])
                             conloc=BaseFormOfLocaleName(localeBaseForms, loc)
                             Log("   Conseries: "+con+" is at " + conloc)
 
-                    # If the conseries has a date, add the convention to the list
-                    if conColumn < len(row) and len(row[conColumn]) > 0  and dateColumn < len(row) and len(row[dateColumn]) > 0:
-                        # Ignore anything in trailing parenthesis
-                        p=re.compile("\(.*\)\s?$")
-                        datestr=p.sub("", row[dateColumn])
-                        # Convert the HTML characters some people have inserted into their ascii equivalents
-                        datestr=datestr.replace("&nbsp;", " ").replace("&#8209;", "-")
+                    # Decode the convention and date columns add the convention to the list
+                    virtual=False
 
-                        # Now look for dates. There are three cases to consider:
-                        #1: date                    A simple date
-                        #2: <s>date</s>             A canceled con's date
-                        #3: <s>date</s> date        A rescheduled con's date
-                        #4: <s>date</s> <s>date</s> A rescheduled and then cancelled con's dates
-                        m=re.match("^\s?(?:<s>(.+?)</s>)?\s?(?:<s>(.+?)</s>)?\s?(.*)$", datestr)
-                        if m is None:
-                            Log("Date errror: "+datestr)
-                            continue
+                    # First the dates
+                    # For the dates column, we want to remove the virtual designation as it will just confuse later processing.
+                    col=row[dateColumn]
+                    newcol=vPat1.sub("", col)   # Check w/parens 1st so that if parens exist, they get removed.
+                    if col != newcol:
+                        virtual=True
+                        row[index]=newcol
+                        col=newcol
+                    else:
+                        newcol=vPat2.sub("", col)
+                        if col != newcol:
+                            virtual=True
+                            row[index]=newcol
+                            col=newcol
 
-                        fdr=[None, None, None]
-                        for i in range(3):
-                            if (m.groups()[i] is not None and len(m.groups()[i])) > 0:
-                                fdr[i]=FanzineDateRange().Match(m.groups()[i])
-                                if fdr[i].Duration() > 6:
-                                    Log("??? "+page.Name+" has long duration: "+str(fdr[i]), isError=True)
+                    # Ignore anything in trailing parenthesis
+                    p=re.compile("\(.*\)\s?$")
+                    datestr=p.sub("", col)
+                    # Convert the HTML characters some people have inserted into their ascii equivalents
+                    datestr=datestr.replace("&nbsp;", " ").replace("&#8209;", "-")
 
-                        # There should be at least one interpretable date range
-                        if all(x is None for x in fdr) or all(x is None or (x is not None and x.IsEmpty()) for x in fdr):
-                            Log("***Could not interpret "+row[conColumn]+"'s date range: "+row[dateColumn], isError=True)
-                            continue
+                    # Now look for dates. There are three cases to consider:
+                    #1: date                    A simple date
+                    #2: <s>date</s>             A canceled con's date
+                    #3: <s>date</s> date        A rescheduled con's date
+                    #4: <s>date</s> <s>date</s> A rescheduled and then cancelled con's dates
+                    m=re.match("^\s?(?:<s>(.+?)</s>)?\s?(?:<s>(.+?)</s>)?\s?(.*)$", datestr)
+                    if m is None:
+                        Log("Date errror: "+datestr)
+                        continue
 
-                        # Get the convention name
-                        # [[xxx]]
-                        # [[xxx|yyy]]               Use just xxx
-                        # [[xxx|yyy]]: zzz          Ignore the ": "zzz"
-                        # (Ignore <s>...</s> if present.)
-                        conname=row[conColumn].replace("<s>", "").replace("</s>", "")
-                        conname=conname.replace("[[", "@@").replace("]]", "%%")  # The square brackets are Regex special characters. This makes the pattern simpler
-                        # Match ''[['' then <stuff> then maybe '|' followed by <stuff> then ']]' then maybe (':' followed by styff) then EOL
-                        m=re.match("@@([^|%]+)(\|?)([^%]*)%%(:?.*)$", conname)
+                    fdr=[None, None, None]
+                    for i in range(3):
+                        if (m.groups()[i] is not None and len(m.groups()[i])) > 0:
+                            fdr[i]=FanzineDateRange().Match(m.groups()[i])
+                            if fdr[i].Duration() > 6:
+                                Log("??? "+page.Name+" has long duration: "+str(fdr[i]), isError=True)
+
+                    # There should be at least one interpretable date range
+                    if all(x is None for x in fdr) or all(x is None or (x is not None and x.IsEmpty()) for x in fdr):
+                        Log("***Could not interpret "+row[conColumn]+"'s date range: "+row[dateColumn], isError=True)
+                        continue
+
+                    # Get the convention name
+                    # [[xxx]]
+                    # [[xxx|yyy]]               Use just xxx
+                    # [[xxx|yyy]] zzz          Ignore the "zzz"
+                    # (Ignore <s>...</s> if present.)
+                    col=row[conColumn]
+                    conname=col.replace("<s>", "").replace("</s>", "")
+                    conname=conname.replace("[[", "@@").replace("]]", "%%")  # The square brackets are Regex special characters. This substitution makes the pattern simpler
+                    # Match ''[['' then <stuff> then maybe '|' followed by <stuff> then ']]' then maybe (':' followed by styff) then EOL
+                    m=re.match("@@([^|%]+)(\|?)([^%]*)%%(:?.*)$", conname)
+                    if m is not None:
+                        conname=m.groups()[0]
+
+                    # Unlike with the date, we don't want to remove the virtual designation if it is part of the con's name (inside the [[]]), but we check everywhere
+                    col=row[conColumn]
+                    m=vPat1.match(col)
+                    if m is not None:
+                        virtual=True
+                    else:
+                        m=vPat2.match(col)
                         if m is not None:
-                            conname=m.groups()[0]
-                        conname=CannonicalName(conname) # Convert to the connonical name
+                            virtual=True
 
-                        # There will be at most two dates, and at most one that is not cancelled
-                        # So we have the following possibilities: (d), (d, dc1), (dc1), (dc1, dc2)
-                        # Now add the convention entries
-                        if fdr[0] is not None and not fdr[0].IsEmpty():
-                            ConAdd(conventions, conname, fdr[0], ConInfo(Link=conname, Text=row[conColumn], Loc=conloc, DateRange=fdr[0], Virtual=virtual, Cancelled=True))      # We merge conventions with the same name and year
-                        if fdr[1] is not None and not fdr[1].IsEmpty():
-                            ConAdd(conventions, conname, fdr[1], ConInfo(Link=conname, Text=row[conColumn], Loc=conloc, DateRange=fdr[1], Virtual=virtual, Cancelled=True))      # We merge conventions with the same name and year
-                        if fdr[2] is not None and not fdr[2].IsEmpty():
-                            ConAdd(conventions, conname, fdr[2], ConInfo(Link=conname, Text=row[conColumn], Loc=conloc, DateRange=fdr[2], Virtual=virtual))      # We merge conventions with the same name and year
+                            #still need to remove exterior virtuals
+
+                    conname=CanonicalName(conname) # Convert to the canonical name
+
+                    # There will be at most two dates, and at most one that is not cancelled
+                    # So we have the following possibilities: (d), (d, dc1), (dc1), (dc1, dc2)
+                    # Now add the convention entries
+                    if fdr[0] is not None and not fdr[0].IsEmpty():
+                        ConAdd(conventions, conname, fdr[0], ConInfo(Link=conname, Text=row[conColumn], Loc=conloc, DateRange=fdr[0], Virtual=virtual, Cancelled=True))      # We merge conventions with the same name and year
+                    if fdr[1] is not None and not fdr[1].IsEmpty():
+                        ConAdd(conventions, conname, fdr[1], ConInfo(Link=conname, Text=row[conColumn], Loc=conloc, DateRange=fdr[1], Virtual=virtual, Cancelled=True))      # We merge conventions with the same name and year
+                    if fdr[2] is not None and not fdr[2].IsEmpty():
+                        ConAdd(conventions, conname, fdr[2], ConInfo(Link=conname, Text=row[conColumn], Loc=conloc, DateRange=fdr[2], Virtual=virtual))      # We merge conventions with the same name and year
 
 # OK, all of the con series have been mined.  Now let's look through all the con instances and see if we can get more location information from them.
 # (Not all con series tables contain location information.)
@@ -453,7 +483,7 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
         if con.Cancelled:
             context="<s>"+context+"</s>"
         if con.Virtual:
-            context+=" (virtual)"
+            context="''"+context+" (virtual)''"
         else:
             if len(conloctext) > 0:
                 context+="&nbsp;&nbsp;&nbsp;<small>("+conloctext+")</small>"
