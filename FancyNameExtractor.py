@@ -48,7 +48,7 @@ Log("   path='"+fancySitePath+"'")
 allFancy3PagesFnames = [f[:-4] for f in os.listdir(fancySitePath) if os.path.isfile(os.path.join(fancySitePath, f)) and f[-4:] == ".txt"]
 allFancy3PagesFnames = [cn for cn in allFancy3PagesFnames if not cn.startswith("index_")]     # Drop index pages
 #allFancy3PagesFnames= [f for f in allFancy3PagesFnames if f[0:6].lower() == "windyc" or f[0:5].lower() == "new z"]        # Just to cut down the number of pages for debugging purposes
-#allFancy3PagesFnames= [f for f in allFancy3PagesFnames if f[0:5].lower() == "trinc"]        # Just to cut down the number of pages for debugging purposes
+#llFancy3PagesFnames= [f for f in allFancy3PagesFnames if f[0:6].lower() == "plokta"]        # Just to cut down the number of pages for debugging purposes
 Log("   "+str(len(allFancy3PagesFnames))+" pages found")
 
 fancyPagesDictByWikiname={}     # Key is page's canname; Val is a FancyPage class containing all the references on the page
