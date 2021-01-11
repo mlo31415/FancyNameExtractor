@@ -292,17 +292,6 @@ for page in fancyPagesDictByWikiname.values():
                     if len(row) < numcolumns-1 or len(row[conColumn]) == 0  or len(row[dateColumn]) == 0:
                         continue
 
-                    # # Scan the whole row looking for a text flag indicating that the convention was cancelled and remove it.
-                    # # (A text cancelled flag is never a part of a con name, so once we have recorded it, it's just clutter.)
-                    # cPat=re.compile("[(]?cancelled[)]?", re.IGNORECASE)     # Note optional parens
-                    # for index, cell in enumerate(row):
-                    #     newcell=cPat.sub("", cell)    # Detect pattern and replace it with empty string
-                    #     if cell != newcell:
-                    #         # If the contents of the cell changed, we have a hit. Update the row with the modified cell contents
-                    #         cancelled=True
-                    #         row[index]=newcell
-                    #         cell=newcell
-
                     # If the con series table has a location column, extract the location
                     conlocation=""
                     if locColumn is not None:
@@ -373,11 +362,6 @@ for page in fancyPagesDictByWikiname.values():
                             dates[ndates]=d
                             ndates=1
 
-                    # There should be at least one interpretable date range
-                    if False:
-                        if all(x is None for x in fdr) or all(x is None or (x is not None and x.IsEmpty()) for x in fdr):
-                            Log("***Could not interpret "+row[conColumn]+"'s date range: "+row[dateColumn], isError=True)
-                            continue
 
                     # Get the convention name.
                     context=row[conColumn]
@@ -448,41 +432,6 @@ for page in fancyPagesDictByWikiname.values():
                             context=re.sub(pat, "", context).strip()  # Delete the stuff just matched
                             ncons=1
 
-                    # # Match Group: Optional <s> + @@ + stuff + optional </s> end group whitespace Repeat group
-                    # m=re.match("\w*((?:<s>)?@@.+?%%(?:\w*</s>)?)\w*((?:<s>)?@@.+?%%(?:\w*</s>)?)?\w*$", context)
-                    # context1=""
-                    # context2=""
-                    # if m is not None:
-                    #     context1=m.groups()[0]
-                    #     context2=m.groups()[1]
-                    #     ncons=2
-                    # else:
-                    #     m=re.match("(@@.+)$", context)
-                    #     if m is not None and len(m.groups()) == 1:
-                    #         context1=m.groups()[0]
-                    #         context2=""
-                    #         ncons=1
-                    #     else:
-                    #         Log("'"+row[conColumn]+"' could not be broken into either 1 or 2 cons", isError=True)
-                    #         continue
-                    # # OK, now we have two con chunks of one of these forms:
-                    # #   link%%
-                    # #   link|text%%
-                    # #   link|text%% trailing
-                    # # And in each case the link..%% may be surrounded by <s>/<s>
-                    # # Look for <s></s>
-                    # c1, s1=ScanForS(context1)
-                    # c2, s2=ScanForS(context2)
-                    # # Now convert all link|text%% to link%%
-                    # m=re.match("(.*)\|.*%%(.*)$", s1)
-                    # if m is not None:
-                    #     s1=m.groups()[0]+"%%"+m.groups()[1]
-                    # m=re.match("(.*)\|.*%%(.*)$", s2)
-                    # if m is not None:
-                    #     s2=m.groups()[0]+"%%"+m.groups()[1]
-                    # # Now split link%%trailing to link and trailing
-                    # m=re.match("(.*)%%(.*)$", s1)
-
 
                     # # OK, now we have two con chunks of one of these forms:
                     # #   link%%
@@ -524,19 +473,6 @@ for page in fancyPagesDictByWikiname.values():
                         t2=""
                     cons=[(l1, t1, c1), (l2, t2, c2)]
 
-                    # # Match ''[['' then <stuff> then maybe '|' followed by <stuff> then ']]' then maybe (':' followed by stuff) then EOL
-                    # m=re.match("@@([^|%]+)(\|?)([^%]*)%%(:?.*)$", context)
-                    # if m is None:
-                    #     continue
-                    # conname=m.groups()[0]
-                    #
-                    # # Unlike with the date, we don't want to remove the virtual designation if it is part of the con's name (inside the [[]]), but we check everywhere
-                    # col=row[conColumn]
-                    # v1, _ =ScanForVirtual(vPat1, vPat2, col)
-                    # # Now check the trailing junk. And here we do delete it.
-                    # v2, trailing=ScanForVirtual(vPat1, vPat2, m[2])
-                    # virtual=virtual or v1 or v2
-
                     # Now we have cons and dates and need to create the appropriate convention entries.
                     if ncons == 0 or ndates == 0:
                         Log("Scan abandoned: ncons="+str(ncons)+"  ndates="+str(ndates), isError=True)
@@ -561,15 +497,6 @@ for page in fancyPagesDictByWikiname.values():
                         ConAdd(conventions, cons[1][0],
                                ConInfo(Link=cons[1][0], Text=cons[1][0], Loc=conlocation, DateRange=dr, Virtual=v, Cancelled=cancelled))
 
-                    # # There will be at most two dates, and at most one that is not cancelled
-                    # # So we have the following possibilities: (d), (d, dc1), (dc1), (dc1, dc2)
-                    # # Now add the convention entries
-                    # if fdr[0] is not None and not fdr[0].IsEmpty():
-                    #     ConAdd(conventions, conname, fdr[0], ConInfo(Link=conname, Text=row[conColumn], Loc=conlocation, DateRange=fdr[0], Virtual=virtual, Cancelled=True))      # We merge conventions with the same name and year
-                    # if fdr[1] is not None and not fdr[1].IsEmpty():
-                    #     ConAdd(conventions, conname, fdr[1], ConInfo(Link=conname, Text=row[conColumn], Loc=conlocation, DateRange=fdr[1], Virtual=virtual, Cancelled=True))      # We merge conventions with the same name and year
-                    # if fdr[2] is not None and not fdr[2].IsEmpty():
-                    #     ConAdd(conventions, conname, fdr[2], ConInfo(Link=conname, Text=row[conColumn], Loc=conlocation, DateRange=fdr[2], Virtual=virtual))      # We merge conventions with the same name and year
 
 # OK, all of the con series have been mined.  Now let's look through all the con instances and see if we can get more location information from them.
 # (Not all con series tables contain location information.)
