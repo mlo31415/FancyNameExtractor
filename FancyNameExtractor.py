@@ -48,7 +48,7 @@ Log("   path='"+fancySitePath+"'")
 allFancy3PagesFnames = [f[:-4] for f in os.listdir(fancySitePath) if os.path.isfile(os.path.join(fancySitePath, f)) and f[-4:] == ".txt"]
 allFancy3PagesFnames = [cn for cn in allFancy3PagesFnames if not cn.startswith("index_")]     # Drop index pages
 #allFancy3PagesFnames= [f for f in allFancy3PagesFnames if f[0:6].lower() == "windyc" or f[0:5].lower() == "new z"]        # Just to cut down the number of pages for debugging purposes
-#allFancy3PagesFnames= [f for f in allFancy3PagesFnames if f[0:6].lower() == "trainc"]        # Just to cut down the number of pages for debugging purposes
+#allFancy3PagesFnames= [f for f in allFancy3PagesFnames if f[0:6].lower() == "jordan"]        # Just to cut down the number of pages for debugging purposes
 Log("   "+str(len(allFancy3PagesFnames))+" pages found")
 
 fancyPagesDictByWikiname={}     # Key is page's canname; Val is a FancyPage class containing all the references on the page
@@ -335,11 +335,11 @@ for page in fancyPagesDictByWikiname.values():
                     datetext=datetext.replace("&nbsp;", " ").replace("&#8209;", "-")
 
                     # Now look for dates. There are three cases to consider:
-                    #1: date                    A simple date
+                    #1: date                    A simple date (note that there will never be two simple dates in a dates cell)
                     #2: <s>date</s>             A canceled con's date
                     #3: <s>date</s> date        A rescheduled con's date
                     #4: <s>date</s> <s>date</s> A rescheduled and then cancelled con's dates
-                    m=re.match("^\s?(?:(<s>.+?</s>))?\s?(?:(<s>.+?</s>))?\s?(.*)$", datetext)
+                    m=re.match("^\s?(?:(<s>.+?</s>)?)\s?((?:<s>)?.+?(?:</s>)?)?\s?$", datetext)
                     if m is None:
                         Log("Date error: "+datetext)
                         continue
@@ -352,15 +352,19 @@ for page in fancyPagesDictByWikiname.values():
                             c, s=ScanForS(m.groups()[i])
                             d=FanzineDateRange().Match(s)
                             if d.Duration() > 6:
-                                Log("??? "+page.Name+" has long duration: "+str(fdr[i]), isError=True)
+                                Log("??? "+page.Name+" has long duration: "+str(d), isError=True)
                             if not d.IsEmpty():
                                 dates[ndates]=d, c
                                 ndates+=1
-                    if ndates == 0 and m.groups()[2] is not None and len(m.groups()[2]) > 0:
-                        d=FanzineDateRange().Match(m.groups()[2]), False
-                        if not d[0].IsEmpty():
-                            dates[ndates]=d
-                            ndates=1
+                    if ndates == 0:
+                        if m is None or len(m.groups()) < 3:
+                            Log("***Not enough groups found for date", isError=True)
+                            continue
+                        if m.groups()[2] is not None and len(m.groups()[2]) > 0:
+                            d=FanzineDateRange().Match(m.groups()[2]), False
+                            if not d[0].IsEmpty():
+                                dates[ndates]=d
+                                ndates=1
 
 
                     # Get the convention name.
@@ -394,7 +398,7 @@ for page in fancyPagesDictByWikiname.values():
                     if context.count("@@") != context.count("%%"):
                         Log("'"+row[conColumn]+"' has unbalanced double brackets. This is unlikely to end well...", isError=True)
 
-                    # Operate by nibbing off dates
+                    # Operate by nibbing off bits
                     context=context.strip()
                     pat="<s>\w*@@(.+?)%%\w*</s>"
                     m=re.match(pat, context)
@@ -433,13 +437,14 @@ for page in fancyPagesDictByWikiname.values():
                             ncons=1
 
 
-                    # # OK, now we have two con chunks of one of these forms:
+                    # # OK, now we have two con chunks, each of one of these forms:
                     # #   link%%
                     # #   link|text%%
                     # #   link|text%% trailing
 
-                    # Now convert all link|text to link
-                    m=re.match("(.+)\|(.+)$", s1)
+                    # Now convert all link|text to separate link and text
+                    #Do this for s1 and s2
+                    m=re.match("(.+)\|(.+)$", s1)       # Split xxx|yyy into xxx and yyy
                     if m is not None:
                         l1=m.groups()[0]
                         t1=m.groups()[1]
@@ -454,23 +459,24 @@ for page in fancyPagesDictByWikiname.values():
                     else:
                         l2=s2
                         t2=s2
-                    # Now split link%%trailing to link and trailing
-                    m=re.match("(.*)%%(.*)$", s1)
-                    l1=t1=""
-                    if m is not None:
-                        l1=m.groups()[0]
-                        t1=m.groups()[1]
-                    else:
-                        l1=s1.replace("%%", "")
-                        t1=""
-                    l2=t2=""
-                    m=re.match("(.*)%%(.*)$", s2)
-                    if m is not None:
-                        l2=m.groups()[0]
-                        t2=m.groups()[1]
-                    else:
-                        l2=s2.replace("%%", "")
-                        t2=""
+
+                    # # Now split link%%trailing to link and trailing
+                    # m=re.match("(.*)%%(.*)$", s1)
+                    # l1=t1=""
+                    # if m is not None:
+                    #     l1=m.groups()[0]
+                    #     t1=m.groups()[1]
+                    # else:
+                    #     l1=s1.replace("%%", "")
+                    #     t1=""
+                    # l2=t2=""
+                    # m=re.match("(.*)%%(.*)$", s2)
+                    # if m is not None:
+                    #     l2=m.groups()[0]
+                    #     t2=m.groups()[1]
+                    # else:
+                    #     l2=s2.replace("%%", "")
+                    #     t2=""
                     cons=[(l1, t1, c1), (l2, t2, c2)]
 
                     # Now we have cons and dates and need to create the appropriate convention entries.
