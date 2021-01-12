@@ -215,13 +215,12 @@ conventions=[]
 # Scan for a virtual flag
 # Return True/False and remaining text after V-flag is removed
 def ScanForVirtual(alternatives: str, input: str) -> Tuple[bool, str]:
-    global newcol, virtual
-    newcol=re.sub("\((?:"+alternatives+")\)", "", input, re.IGNORECASE)  # Check w/parens 1st so that if parens exist, they get removed.
-    if input != newcol:
-        return True, newcol.strip()
-    newcol=re.sub(alternatives, "", input)
-    if input != newcol:
-        return True, newcol.strip()
+    newval=re.sub("\((?:"+alternatives+")\)", "", input, re.IGNORECASE)  # Check w/parens 1st so that if parens exist, they get removed.
+    if input != newval:
+        return True, newval.strip()
+    newval=re.sub(alternatives, "", input)
+    if input != newval:
+        return True, newval.strip()
     return False, input
 
 # Scan for text bracketed by <s>...</s>
