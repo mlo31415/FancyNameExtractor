@@ -216,7 +216,7 @@ conventions=[]
 # Return True/False and remaining text after V-flag is removed
 def ScanForVirtual(alternatives: str, input: str) -> Tuple[bool, str]:
     global newcol, virtual
-    newcol=re.sub("\((?:"+alternatives+")\)", "", input)  # Check w/parens 1st so that if parens exist, they get removed.
+    newcol=re.sub("\((?:"+alternatives+")\)", "", input, re.IGNORECASE)  # Check w/parens 1st so that if parens exist, they get removed.
     if input != newcol:
         return True, newcol.strip()
     newcol=re.sub(alternatives, "", input)
@@ -310,7 +310,9 @@ for page in fancyPagesDictByWikiname.values():
                     # We need two patterns here because Python's regex doesn't have balancing groups and we don't want to match unbalanced parens
                     alternatives="virtual|online|held online|moved online|virtual convention"
                     virtual, datetext=ScanForVirtual(alternatives, datetext)
-                    #TODO: Need to expand scope of scan
+                    for col in row:
+                        v2, _=ScanForVirtual(alternatives, col)
+                        virtual=virtual or v2
 
                     # Ignore anything in trailing parenthesis. (e.g, "(Easter weekend)", "(Memorial Day)")
                     p=re.compile("\(.*\)\s?$")  # Note that this is greedy. Is that right?
