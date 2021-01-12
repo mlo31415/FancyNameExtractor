@@ -170,14 +170,14 @@ def ScanForLocales(locales: Set[str], s: str) -> Optional[Set[str]]:
 class ConInfo:
     def __init__(self, Link: str="", Text: str="", Loc: str="", DateRange: FanzineDateRange=FanzineDateRange(), Virtual: bool=False, Cancelled: bool=False):
         self.Link: str=Link  # The actual text of the link on the series page
-        self.Text: str=Text  # The displayed text for that link on the series page
+        self.NameInSeriesList: str=Text  # The displayed text for that link on the series page
         self.Loc: str=Loc
         self.DateRange: FanzineDateRange=DateRange
         self.Virtual: bool=Virtual
         self.Cancelled: bool=Cancelled
 
     def __str__(self) -> str:
-        s=self.Link+" "+self.Text+" "+str(self.DateRange)+" "+self.Loc
+        s="Link: "+self.Link+"  Name="+self.NameInSeriesList+"  Date="+str(self.DateRange)+"  Location="+self.Loc
         if self.Cancelled:
             s+=" cancelled=True"
         if self.Virtual:
@@ -373,8 +373,6 @@ for page in fancyPagesDictByWikiname.values():
                     cons=[("", "", False), ("", "", False)]
                     ncons=0
 
-                    # First, we break the text up into 1-con chunks.  Each chunk contains exactly one [[...]]
-                    # [[...]] trailing 1 [[...]] trailing 2 is broken into  "[[...]] trailing 1" and  "[[...]] trailing 2" by looking for the *second* [[
                     if context.count("@@") == 0:
                         Log("'"+row[conColumn]+"' has no links in it. It will be ignored.")
                         continue
@@ -383,7 +381,7 @@ for page in fancyPagesDictByWikiname.values():
                     if context.count("@@") != context.count("%%"):
                         Log("'"+row[conColumn]+"' has unbalanced double brackets. This is unlikely to end well...", isError=True)
 
-                    # Operate by nibbing off bits
+                    # Operate by nibbing off bits. First we look for a <s>cancelled</s> con name
                     context=context.strip()
                     pat="<s>\w*@@(.+?)%%\w*</s>"
                     m=re.match(pat, context)
@@ -420,7 +418,6 @@ for page in fancyPagesDictByWikiname.values():
                             s1=m.groups()[0]
                             context=re.sub(pat, "", context).strip()  # Delete the stuff just matched
                             ncons=1
-
 
                     # # OK, now we have two con chunks, each of one of these forms:
                     # #   link%%
@@ -469,27 +466,32 @@ for page in fancyPagesDictByWikiname.values():
                         Log("Scan abandoned: ncons="+str(ncons)+"  ndates="+str(ndates), isError=True)
                         continue
 
-                    if ncons >= 1:
-                        # Add the 1st con (or only) with the 1st (or only) date
-                        cancelled=cons[0][2] or dates[0][1]
-                        v=False if cancelled else virtual
-                        ci=ConInfo(Link=cons[0][0], Text=cons[0][0], Loc=conlocation, DateRange=dates[0][0], Virtual=v, Cancelled=cancelled)
-                        if ci.DateRange.IsEmpty():
-                            Log("***"+ci.Link+"has an empty date range: "+str(ci.DateRange), isError=True)
-                        conventions.append(ci)
-                    if ncons == 2:
-                        # If there's a second con, use the second date unless there's only one date
-                        if ndates == 2:
-                            dr=dates[1][0]
-                            cancelled=cons[1][2] or dates[0][1]
-                        else:
-                            dr=dates[0][0]
-                            cancelled=cons[1][2] or dates[0][0]
-
-                        v=False if cancelled else virtual
-                        ci=ConInfo(Link=cons[1][0], Text=cons[1][0], Loc=conlocation, DateRange=dr, Virtual=v, Cancelled=cancelled)
-                        conventions.append(ci)
-
+                    if ncons == ndates:
+                        for i in range(ncons):
+                            # Add the 1st con (or only con) with the 1st (or only) date
+                            cancelled=cons[i][2] or dates[i][1]
+                            v=False if cancelled else virtual
+                            ci=ConInfo(Link=cons[i][0], Text=cons[i][0], Loc=conlocation, DateRange=dates[i][0], Virtual=v, Cancelled=cancelled)
+                            if ci.DateRange.IsEmpty():
+                                Log("***"+ci.Link+"has an empty date range: "+str(ci.DateRange), isError=True)
+                            #Log("#append: "+str(ci))
+                            conventions.append(ci)
+                    elif ncons == 2 and ndates == 1:
+                        for i in range(ncons):
+                            cancelled=cons[i][2] or dates[0][1]
+                            v=False if cancelled else virtual
+                            ci=ConInfo(Link=cons[i][0], Text=cons[i][0], Loc=conlocation, DateRange=dates[0][0], Virtual=v, Cancelled=cancelled)
+                            conventions.append(ci)
+                            #Log("#append: "+str(ci))
+                    elif ncons == 1 and ndates == 2:
+                        for i in range(ndates):
+                            cancelled=cons[0][2] or dates[i][1]
+                            v=False if cancelled else virtual
+                            ci=ConInfo(Link=cons[0][0], Text=cons[0][0], Loc=conlocation, DateRange=dates[i][0], Virtual=v, Cancelled=cancelled)
+                            conventions.append(ci)
+                            #Log("#append: "+str(ci))
+                    else:
+                        Log("Can't happen! ncons="+str(ncons)+"  ndates="+str(ndates), isError=True)
 
 # OK, all of the con series have been mined.  Now let's look through all the con instances and see if we can get more location information from them.
 # (Not all con series tables contain location information.)
@@ -594,7 +596,7 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
         conloctext=con.Loc
 
         # Format the convention name and location for tabular output
-        context="[["+str(con.Text)+"]]"
+        context="[["+str(con.NameInSeriesList)+"]]"
         if con.Virtual:
             context="''"+context+" (virtual)''"
         else:
@@ -602,25 +604,29 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
                 context+="&nbsp;&nbsp;&nbsp;<small>("+conloctext+")</small>"
 
         # Now write the line
+        # We have two levels of date headers:  The year and each unique date within the year
         # We do a year header for each new year, so we need to detect when the current year changes
-        if currentYear == con.DateRange._startdate.Year:
-            if currentDateRange == con.DateRange:
-                f.write("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' ' ||"+context+"\n")
-            else:
-                if con.Cancelled:
-                    f.write(str(con.DateRange)+"||<s>"+context+"</s>\n")
-                else:
-                    f.write(str(con.DateRange)+"||"+context+"\n")
-                currentDateRange=con.DateRange
-        else:
+        if currentYear != con.DateRange._startdate.Year:
             # When the current date range changes, we put the new date range in the 1st column of the table
-            currentYear = con.DateRange._startdate.Year
+            currentYear=con.DateRange._startdate.Year
             currentDateRange=con.DateRange
             f.write('colspan="2"| '+"<big><big>'''"+str(currentYear)+"'''</big></big>\n")
-            if con.Cancelled:
-                f.write(str(con.DateRange)+"||<s>"+context+"</s>\n")
+
+            # Write the row in two halves, first the date column and then the con column
+            f.write(str(con.DateRange)+"||")
+        else:
+            if currentDateRange != con.DateRange:
+                f.write(str(con.DateRange)+"||")
+                currentDateRange=con.DateRange
             else:
-                f.write(str(con.DateRange)+"||"+context+"\n")
+                f.write("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' ' ||")
+
+        if con.Cancelled:
+            f.write("<s>"+context+"</s>\n")
+        else:
+            f.write(context+"\n")
+
+
     f.write("</tab>\n")
     f.write("{{conrunning}}\n[[Category:List]]\n")
 
