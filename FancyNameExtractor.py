@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Dict, Set, Tuple
+from typing import Optional, Dict, Set, Tuple, List
 
 import os
 import re
@@ -197,9 +197,6 @@ def Crosscheck(inputList, checkList) -> bool:
     n=next((item for item in ListofHits if item is not None), None)
     return n
 
-# Form the key used for the convention dictionary
-def ConKey(conname: str, condate: FanzineDateRange) -> str:
-    return conname#.lower()#+"$"+str(condate._startdate.Year)
 
 def CanonicalName(name: str) -> str:
     if name is None or name == "":
@@ -212,22 +209,8 @@ def CanonicalName(name: str) -> str:
         return name
     return g_canonicalNames[name]
 
-def ConAdd(conlist: Dict[str], conname: str, val: ConInfo) -> None:
-    conname=CanonicalName(conname)
-    if conname in conlist.keys():
-        old=conlist[conname]
-        if val.Loc != old.Loc and val.Link != old.Link:
-            Log("ConKey: '"+conname+"' already in conlist", isError=True)
-            Log("   old="+str(old), isError=True)
-            Log("   new="+str(val), isError=True)
-    conlist[conname]=val
-    if val.DateRange.IsEmpty():
-        Log("***Empty date range: "+str(val.DateRange))
-
-# Create a dictionary of conventions with useful information about them.
-# The key is the Wiki name of the convention instance page
-# The value is a ConInfo structure which holds a bunch of useful info
-conventions={}
+# Create a list of convention instances with useful information about them stored in a ConInfo structure
+conventions=[]
 
 # Scan for a virtual flag
 # Return True/False and remaining text after V-flag is removed
@@ -327,6 +310,7 @@ for page in fancyPagesDictByWikiname.values():
                     # We need two patterns here because Python's regex doesn't have balancing groups and we don't want to match unbalanced parens
                     alternatives="virtual|online|held online|moved online|virtual convention"
                     virtual, datetext=ScanForVirtual(alternatives, datetext)
+                    #TODO: Need to expand scope of scan
 
                     # Ignore anything in trailing parenthesis. (e.g, "(Easter weekend)", "(Memorial Day)")
                     p=re.compile("\(.*\)\s?$")  # Note that this is greedy. Is that right?
@@ -488,8 +472,10 @@ for page in fancyPagesDictByWikiname.values():
                         # Add the 1st con (or only) with the 1st (or only) date
                         cancelled=cons[0][2] or dates[0][1]
                         v=False if cancelled else virtual
-                        ConAdd(conventions, cons[0][0],
-                               ConInfo(Link=cons[0][0], Text=cons[0][0], Loc=conlocation, DateRange=dates[0][0], Virtual=v, Cancelled=cancelled))
+                        ci=ConInfo(Link=cons[0][0], Text=cons[0][0], Loc=conlocation, DateRange=dates[0][0], Virtual=v, Cancelled=cancelled)
+                        if ci.DateRange.IsEmpty():
+                            Log("***"+ci.Link+"has an empty date range: "+str(ci.DateRange), isError=True)
+                        conventions.append(ci)
                     if ncons == 2:
                         # If there's a second con, use the second date unless there's only one date
                         if ndates == 2:
@@ -500,8 +486,8 @@ for page in fancyPagesDictByWikiname.values():
                             cancelled=cons[1][2] or dates[0][0]
 
                         v=False if cancelled else virtual
-                        ConAdd(conventions, cons[1][0],
-                               ConInfo(Link=cons[1][0], Text=cons[1][0], Loc=conlocation, DateRange=dr, Virtual=v, Cancelled=cancelled))
+                        ci=ConInfo(Link=cons[1][0], Text=cons[1][0], Loc=conlocation, DateRange=dr, Virtual=v, Cancelled=cancelled)
+                        conventions.append(ci)
 
 
 # OK, all of the con series have been mined.  Now let's look through all the con instances and see if we can get more location information from them.
@@ -517,20 +503,16 @@ with open("Con location discrepancies.txt", "w+", encoding='utf-8') as f:
                     place=WikiExtractLink(place)
                     # Find the convention in the conventions dictionary and add the location if appropriate.
                     conname=CanonicalName(page.Name)
-                    conkey=ConKey(conname, FanzineDateRange())
-                    if conkey not in conventions.keys():
-                        Log("Convention "+conkey+" not in Conseries",isError=True)
-                        continue
-                    old=conventions[conkey]
-                    if place != old.Loc:
-                        if old.Loc == "":   # If there previously was no location from the con series page, substitute what we found in the con instance page
-                            old.Loc=place
-                            continue
-                        f.write(conname+": Location mismatch: '"+place+"' != '"+old.Loc+"'\n")
+                    cons=[x for x in conventions if x.Link == conname]
+                    for con in cons:
+                        if place != con.Loc:
+                            if con.Loc == "":   # If there previously was no location from the con series page, substitute what we found in the con instance page
+                                con.Loc=place
+                                continue
+                            f.write(conname+": Location mismatch: '"+place+"' != '"+con.Loc+"'\n")
 
 
-# Convert the con dictionary to a list and sort it in date order
-conventions=[c for c in conventions.values()]
+# Sort the con dictionary  into date order
 oddities=[x for x in conventions if x.DateRange.IsOdd()]
 with open("Con DateRange oddities.txt", "w+", encoding='utf-8') as f:
     for con in oddities:
