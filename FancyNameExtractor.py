@@ -468,6 +468,17 @@ for page in fancyPagesDictByWikiname.values():
                         Log("Scan abandoned: ncons="+str(ncons)+"  ndates="+str(ndates), isError=True)
                         continue
 
+                    # Don't add duplicate entries'
+                    def AppendCon(ci: ConInfo) -> None:
+                        hits=[x for x in conventions if ci.Link == x.Link and ci.DateRange == x.DateRange]
+                        if len(hits) == 0:
+                            conventions.append(ci)
+                        # else:
+                        #     if hits[0].Loc != ci.Loc:
+                        #         Log("AppendCon: cons match name and date, but don't match location.", isError=True)
+                        #         Log("           "+str(hits[0]), isError=True)
+                        #         Log("           "+str(ci), isError=True)
+
                     if ncons == ndates:
                         for i in range(ncons):
                             # Add the 1st con (or only con) with the 1st (or only) date
@@ -476,22 +487,22 @@ for page in fancyPagesDictByWikiname.values():
                             ci=ConInfo(Link=cons[i][0], Text=cons[i][0], Loc=conlocation, DateRange=dates[i][0], Virtual=v, Cancelled=cancelled)
                             if ci.DateRange.IsEmpty():
                                 Log("***"+ci.Link+"has an empty date range: "+str(ci.DateRange), isError=True)
-                            #Log("#append: "+str(ci))
-                            conventions.append(ci)
+                            Log("#append: "+str(ci))
+                            AppendCon(ci)
                     elif ncons == 2 and ndates == 1:
                         for i in range(ncons):
                             cancelled=cons[i][2] or dates[0][1]
                             v=False if cancelled else virtual
                             ci=ConInfo(Link=cons[i][0], Text=cons[i][0], Loc=conlocation, DateRange=dates[0][0], Virtual=v, Cancelled=cancelled)
-                            conventions.append(ci)
-                            #Log("#append: "+str(ci))
+                            AppendCon(ci)
+                            Log("#append: "+str(ci))
                     elif ncons == 1 and ndates == 2:
                         for i in range(ndates):
                             cancelled=cons[0][2] or dates[i][1]
                             v=False if cancelled else virtual
                             ci=ConInfo(Link=cons[0][0], Text=cons[0][0], Loc=conlocation, DateRange=dates[i][0], Virtual=v, Cancelled=cancelled)
-                            conventions.append(ci)
-                            #Log("#append: "+str(ci))
+                            AppendCon(ci)
+                            Log("#append: "+str(ci))
                     else:
                         Log("Can't happen! ncons="+str(ncons)+"  ndates="+str(ndates), isError=True)
 
