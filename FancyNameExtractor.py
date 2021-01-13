@@ -271,6 +271,8 @@ for page in fancyPagesDictByWikiname.values():
                     continue
 
                 for row in table.Rows:
+                    # if "1936" not in str(row) and "1937" not in str(row):
+                    #     continue
                     LogSetHeader("Processing: "+str(row))
                     # Skip rows with merged columns, and rows where either the date or convention cell is empty
                     if len(row) < numcolumns-1 or len(row[conColumn]) == 0  or len(row[dateColumn]) == 0:
@@ -314,6 +316,7 @@ for page in fancyPagesDictByWikiname.values():
                     for col in row:
                         v2, _=ScanForVirtual(alternatives, col)
                         virtual=virtual or v2
+                    Log("Virtual="+str(virtual))
 
                     # Ignore anything in trailing parenthesis. (e.g, "(Easter weekend)", "(Memorial Day)")
                     p=re.compile("\(.*\)\s?$")  # Note that this is greedy. Is that right?
@@ -352,7 +355,13 @@ for page in fancyPagesDictByWikiname.values():
                             if not d[0].IsEmpty():
                                 dates[ndates]=d
                                 ndates=1
-
+                    if ndates == 0:
+                        Log("no dates found")
+                    elif ndates == 1:
+                        Log("1 date: "+str(dates[0][0])+"   cancelled="+str(dates[0][1]))
+                    else:
+                        Log("2 dates: "+str(dates[0][0])+"   cancelled="+str(dates[0][1]))
+                        Log("           "+str(dates[1][0])+"   cancelled="+str(dates[1][1]))
 
                     # Get the convention name.
                     context=row[conColumn]
@@ -364,7 +373,6 @@ for page in fancyPagesDictByWikiname.values():
                     # But! There can be more than one name on a date if a con converted from real to virtual while changing its name and keeping its dates:
                     # E.g., <s>[[FilKONtario 30]]</s> [[FilKONtari-NO]] (trailing stuff)
                     # Each of the bracketed chunks can be of one of the three forms, above. (Ugh.)
-            #context=context.replace("<s>", "").replace("</s>", "")
                     context=context.replace("[[", "@@").replace("]]", "%%")  # The square brackets are Regex special characters. This substitution makes the pattern simpler
                     # Convert the HTML characters some people have inserted into their ascii equivalents
                     context=context.replace("&nbsp;", " ").replace("&#8209;", "-")
@@ -444,6 +452,10 @@ for page in fancyPagesDictByWikiname.values():
                         l2=s2
                         t2=s2
 
+                    Log(str(ncons)+" cons")
+                    Log("         s1="+s1+"  c1="+str(c1)+"  l1="+l1+"  t1="+t1)
+                    Log("         s2="+s2+"  c2="+str(c2)+"  l2="+l2+"  t2="+t2)
+
                     # # Now split link%%trailing to link and trailing
                     # m=re.match("(.*)%%(.*)$", s1)
                     # l1=t1=""
@@ -473,11 +485,10 @@ for page in fancyPagesDictByWikiname.values():
                         hits=[x for x in conventions if ci.Link == x.Link and ci.DateRange == x.DateRange]
                         if len(hits) == 0:
                             conventions.append(ci)
-                        # else:
-                        #     if hits[0].Loc != ci.Loc:
-                        #         Log("AppendCon: cons match name and date, but don't match location.", isError=True)
-                        #         Log("           "+str(hits[0]), isError=True)
-                        #         Log("           "+str(ci), isError=True)
+                        else:
+                            # If there are two sources for the convention's location and one is empty, use the other.
+                            if len(hits[0].Loc) == 0:
+                                hits[0].Loc=ci.Loc
 
                     if ncons == ndates:
                         for i in range(ncons):
