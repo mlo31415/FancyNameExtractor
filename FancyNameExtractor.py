@@ -215,10 +215,12 @@ conventions=[]
 # Scan for a virtual flag
 # Return True/False and remaining text after V-flag is removed
 def ScanForVirtual(alternatives: str, input: str) -> Tuple[bool, str]:
-    newval=re.sub("\((?:"+alternatives+")\)", "", input, re.IGNORECASE)  # Check w/parens 1st so that if parens exist, they get removed.
+    # First look for the alternative contain in parens *anywhere* in the text
+    newval=re.sub("\((?:"+alternatives+")\)", "", input, flags=re.IGNORECASE)  # Check w/parens 1st so that if parens exist, they get removed.
     if input != newval:
         return True, newval.strip()
-    newval=re.sub(alternatives, "", input)
+    # Now look for alternatives by themselves.  So we don't pick up junk, we require that the non-parenthesized alternatives be alone in the cell
+    newval=re.sub("\s*("+alternatives+")\s*$", "", input, flags=re.IGNORECASE)
     if input != newval:
         return True, newval.strip()
     return False, input
