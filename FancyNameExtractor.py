@@ -48,7 +48,7 @@ Log("   path='"+fancySitePath+"'")
 allFancy3PagesFnames = [f[:-4] for f in os.listdir(fancySitePath) if os.path.isfile(os.path.join(fancySitePath, f)) and f[-4:] == ".txt"]
 allFancy3PagesFnames = [cn for cn in allFancy3PagesFnames if not cn.startswith("index_")]     # Drop index pages
 #allFancy3PagesFnames= [f for f in allFancy3PagesFnames if f[0:6].lower() == "windyc" or f[0:5].lower() == "new z"]        # Just to cut down the number of pages for debugging purposes
-#allFancy3PagesFnames= [f for f in allFancy3PagesFnames if f[0:6].lower() == "tropic"]        # Just to cut down the number of pages for debugging purposes
+#allFancy3PagesFnames= [f for f in allFancy3PagesFnames if f[0:6].lower() == "philco"]        # Just to cut down the number of pages for debugging purposes
 Log("   "+str(len(allFancy3PagesFnames))+" pages found")
 
 fancyPagesDictByWikiname={}     # Key is page's canname; Val is a FancyPage class containing all the references on the page
@@ -160,14 +160,16 @@ def ScanForLocales(locales: Set[str], s: str) -> Optional[Set[str]]:
                         out.add(name+", "+country)
 
     # Look for the pattern "in [[City Name]]"
+    # This has the fault that it can find something like "....in [[John Campbell]]'s report" and think that "John Campbell" is a locale.
+    # Fortunately, this will nearly always happen *after* the first sentence which contains the actual locale, so we can ignore second and later
     pattern="in \[\[((?:[A-Z][A-Za-z]+[\.,]?\s*)+)\]\]"
             # Capture "in" followed by "[[" followed by a group
             # The group is a possibly repeated non-capturing group
-            #       which is a UC letter followed by one or more letters followed by an option period or comma followed by zero or more spaces
+            #       which is a UC letter followed by one or more letters followed by an optional period or comma followed by zero or more spaces
             # ending with "]]"
     lst=re.findall(pattern, s)
-    for l in lst:
-        out.add(BaseFormOfLocaleName(localeBaseForms, l))
+    if len(lst) > 0:
+        out.add(BaseFormOfLocaleName(localeBaseForms, lst[0]))
     return out
 
 
