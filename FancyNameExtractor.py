@@ -108,7 +108,7 @@ for locale in locales:
         state=m.groups()[1]
         if city not in localeBaseForms.keys():
             localeBaseForms[city]=city+", "+state
-i=0
+
 def BaseFormOfLocaleName(localeBaseForms: Dict[str, str], name: str) -> str:
     if name in localeBaseForms.keys():
         return localeBaseForms[name]
@@ -123,11 +123,11 @@ def ScanForLocales(locales: Set[str], s: str) -> Optional[Set[str]]:
     pattern="in (?:[A-Za-z]* )?\[*([A-Z][a-z]+\]*,?\\s+\[*[A-Z]{2})\]*[^a-zA-Z]"
             # (?:[A-Za-z]* )?   lets us ignore the "Oklahoma" of in Oklahoma City, OK)
             # \[*  and  \]*     Lets us ignore [[brackets]]
-            # The "[^a-zA-Z]"   prohibits another letter following the putative state
+            # The "[^a-zA-Z]"   prohibits another letter immediately following the putative 2-UC state
 
     # We test for characters on either side of the name, so make sure there are some... #TODO handle this more cleanly
     lst=re.findall(pattern, " "+s+" ")
-    impossiblestates={"SF", "MC", "PR", "II", "IV", "VI", "IX", "XI", "XX", "VL", "XL", "LI", "LV", "LX"}       # PR: Pogress Report; others Roman numerals
+    impossiblestates={"SF", "MC", "PR", "II", "IV", "VI", "IX", "XI", "XX", "VL", "XL", "LI", "LV", "LX"}       # PR: Progress Report; others Roman numerals
     skippers={"Astra", "Con"}       # Second word of multi-word con names
     out=set()
     for l in lst:
