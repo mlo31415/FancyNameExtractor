@@ -110,6 +110,12 @@ for locale in locales:
             localeBaseForms[city]=city+", "+state
 
 def BaseFormOfLocaleName(localeBaseForms: Dict[str, str], name: str) -> str:
+    # There are certain names which are the names of minor US/Canada cities usually written as "Name, XX" and also important cities which are written just "Name"
+    # This table lists names which should not be converted to the so-called base form, as it's probably wrong.
+    table=["London", "Dublin"]
+    if name in table:
+       return name
+    # OK, try to find a base name
     if name in localeBaseForms.keys():
         return localeBaseForms[name]
     return name
