@@ -590,19 +590,12 @@ corrections={
     "York, NY": "New York, NY"
 }
 
-#TODO: Add a list of keywords to find and remove.  E.g. "Astra RR" ("Ad Astra XI")
+# Correct convention names
+for con in conventions:
+    if con.Loc in corrections.keys():
+        con.Loc=corrections[con.Loc]
 
-# Strip the convention names from the locations list.  (I.e., "Fantaycon XI" may look like a place, but it isn't.)
-# We need a list of convention names.  These names are in [[name]] or [[name|name2]] for, so remove the crud
-# connames=[c.Link.replace("[[", "").replace("]]","") for c in conventions]
-# for conname, conlocs in conventionLocations.items():
-#     newlocs=set()
-#     for loc in conlocs:
-#         if loc in corrections.keys():
-#             loc=corrections[loc]
-#         if loc not in connames:
-#             newlocs.add(loc)
-#     conventionLocations[conname]=newlocs
+#TODO: Add a list of keywords to find and remove.  E.g. "Astra RR" ("Ad Astra XI")
 
 # ...
 Log("Writing Convention timeline (Fancy).txt")
