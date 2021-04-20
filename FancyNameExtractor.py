@@ -280,8 +280,6 @@ for page in fancyPagesDictByWikiname.values():
                     continue
 
                 for row in table.Rows:
-                    # if "1936" not in str(row) and "1937" not in str(row):
-                    #     continue
                     LogSetHeader("Processing: "+str(row))
                     # Skip rows with merged columns, and rows where either the date or convention cell is empty
                     if len(row) < numcolumns-1 or len(row[conColumn]) == 0  or len(row[dateColumn]) == 0:
@@ -296,7 +294,7 @@ for page in fancyPagesDictByWikiname.values():
 
                     # Decode the convention and date columns add the resulting convention(s) to the list
                     # This is really complicated since there are (too) many cases and many flavors to the cases.  The cases:
-                    #   name1 || date1          (1: normal)
+                    #   name1 || date1          (1 con: normal)
                     #   <s>name1</s> || <s>date1</s>        (1: cancelled)
                     #   <s>name1</s> || date1        (1: cancelled)
                     #   name1 || <s>date1</s>        (1: cancelled)
@@ -307,7 +305,7 @@ for page in fancyPagesDictByWikiname.values():
                     #   <s>name1</s> name2 || <s>date1</s> date2            (2: cancelled and rescheduled under new name)
                     #   <s>name1</s> <s>name2</s> || <s>date1</s> <s>date2</s>            (2: cancelled and rescheduled under new name and then cancelled)
                     # and all of these cases may have the virtual flag, but it is never applied to a cancelled con unless that is the only option
-                    # Bascially, the pattern is 1 || 1, 1 || 2, 2 || 1, or 2 || 2 (where # is the number of items)
+                    # Basically, the pattern is 1 || 1, 1 || 2, 2 || 1, or 2 || 2 (where # is the number of items)
                     # 1:1 and 2:2 match are yield two cons
                     # 1:2 yields two cons if 1 date is <s>ed
                     # 2:1 yields two cons if 1 con is <s>ed
@@ -401,7 +399,13 @@ for page in fancyPagesDictByWikiname.values():
                     if context.count("@@") != context.count("%%"):
                         Log("'"+row[conColumn]+"' has unbalanced double brackets. This is unlikely to end well...", isError=True)
 
-                    # Operate by nibbing off bits. First we look for a <s>cancelled</s> con name
+                    # Definitions:
+                    #   l1 -- first link
+                    #   t1 -- first text for that link
+                    #   c1 -- was it cancelled?
+                    #   ...and similarly for 2
+
+                    # Operate by nibbing off bits. First we look for a <s>con name</s> indicating cancelled
                     context=context.strip()
                     pat="<s>\w*@@(.+?)%%\w*</s>"
                     m=re.match(pat, context)
@@ -445,7 +449,7 @@ for page in fancyPagesDictByWikiname.values():
                     # #   link|text%% trailing
 
                     # Now convert all link|text to separate link and text
-                    #Do this for s1 and s2
+                    # Do this for s1 and s2
                     m=re.match("(.+)\|(.+)$", s1)       # Split xxx|yyy into xxx and yyy
                     if m is not None:
                         l1=m.groups()[0]
