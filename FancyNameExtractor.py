@@ -345,9 +345,7 @@ for page in fancyPagesDictByWikiname.values():
                         continue
 
                     # We have three groups up to two of which might be None
-                    # [(FDR, cancelled), (FDR, cancelled), trailing text]
-                    dates=[FanzineDateRange(), FanzineDateRange(), ""]
-                    ndates=0
+                    dates=[]
                     for i in range(2):
                         if (m.groups()[i] is not None and len(m.groups()[i])) > 0:
                             c, s=ScanForS(m.groups()[i])
@@ -356,24 +354,26 @@ for page in fancyPagesDictByWikiname.values():
                             if d.Duration() > 6:
                                 Log("??? "+page.Name+" has long duration: "+str(d), isError=True)
                             if not d.IsEmpty():
-                                dates[ndates]=d
-                                ndates+=1
-                    if ndates == 0:
+                                dates.append(d)
+                    if len(dates) == 0:
                         if m is None or len(m.groups()) < 3:
                             Log("***Not enough groups found for date", isError=True)
                             continue
                         if m.groups()[2] is not None and len(m.groups()[2]) > 0:
                             d=FanzineDateRange().Match(m.groups()[2])
                             if not d.IsEmpty():
-                                dates[ndates]=d
-                                ndates=1
-                    if ndates == 0:
+                                dates.append(d)
+                    if len(dates) == 0:
                         Log("no dates found")
-                    elif ndates == 1:
+                    elif len(dates) == 1:
                         Log("1 date: "+str(dates[0])+"   cancelled="+str(dates[0].Cancelled))
+                    elif len(dates) == 2:
+                        Log("2 dates: " + str(dates[0]) + "   cancelled=" + str(dates[0].Cancelled))
+                        Log("           " + str(dates[1]) + "   cancelled=" + str(dates[1].Cancelled))
                     else:
-                        Log("2 dates: "+str(dates[0])+"   cancelled="+str(dates[0].Cancelled))
+                        Log("3 dates: "+str(dates[0])+"   cancelled="+str(dates[0].Cancelled))
                         Log("           "+str(dates[1])+"   cancelled="+str(dates[1].Cancelled))
+                        Log("           "+str(dates[2])+"   cancelled="+str(dates[2].Cancelled))
 
                     # Get the convention name.
                     context=row[conColumn]
@@ -498,8 +498,8 @@ for page in fancyPagesDictByWikiname.values():
                     cons=[(l1, t1, c1), (l2, t2, c2)]
 
                     # Now we have cons and dates and need to create the appropriate convention entries.
-                    if ncons == 0 or ndates == 0:
-                        Log("Scan abandoned: ncons="+str(ncons)+"  ndates="+str(ndates), isError=True)
+                    if ncons == 0 or len(dates) == 0:
+                        Log("Scan abandoned: ncons="+str(ncons)+"  len(dates)="+str(len(dates)), isError=True)
                         continue
 
                     # Don't add duplicate entries'
@@ -512,7 +512,7 @@ for page in fancyPagesDictByWikiname.values():
                             if len(hits[0].Loc) == 0:
                                 hits[0].Loc=ci.Loc
 
-                    if ncons == ndates:
+                    if ncons == len(dates):
                         for i in range(ncons):
                             # Add the 1st con (or only con) with the 1st (or only) date
                             cancelled=cons[i][2] or dates[i].Cancelled
@@ -522,22 +522,22 @@ for page in fancyPagesDictByWikiname.values():
                                 Log("***"+ci.Link+"has an empty date range: "+str(ci.DateRange), isError=True)
                             Log("#append: "+str(ci))
                             AppendCon(ci)
-                    elif ncons == 2 and ndates == 1:
+                    elif ncons == 2 and len(dates) == 1:
                         for i in range(ncons):
                             cancelled=cons[i][2] or dates[0].Cancelled
                             v=False if cancelled else virtual
                             ci=ConInfo(Link=cons[i][0], Text=cons[i][0], Loc=conlocation, DateRange=dates[0], Virtual=v, Cancelled=cancelled)
                             AppendCon(ci)
                             Log("#append: "+str(ci))
-                    elif ncons == 1 and ndates == 2:
-                        for i in range(ndates):
+                    elif ncons == 1 and len(dates) == 2:
+                        for i in range(len(dates)):
                             cancelled=cons[0][2] or dates[i].Cancelled
                             v=False if cancelled else virtual
                             ci=ConInfo(Link=cons[0][0], Text=cons[0][0], Loc=conlocation, DateRange=dates[i], Virtual=v, Cancelled=cancelled)
                             AppendCon(ci)
                             Log("#append: "+str(ci))
                     else:
-                        Log("Can't happen! ncons="+str(ncons)+"  ndates="+str(ndates), isError=True)
+                        Log("Can't happen! ncons="+str(ncons)+"  len(dates)="+str(len(dates)), isError=True)
 
 
 # Compare two locations to see if they match
