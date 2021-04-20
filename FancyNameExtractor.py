@@ -375,8 +375,15 @@ for page in fancyPagesDictByWikiname.values():
                         Log("           "+str(dates[1])+"   cancelled="+str(dates[1].Cancelled))
                         Log("           "+str(dates[2])+"   cancelled="+str(dates[2].Cancelled))
 
-                    # Get the convention name.
+
+                    # Get the corresponding convention name(s).
                     context=row[conColumn]
+                    # Clean up the text
+                    context=context.replace("[[", "@@").replace("]]", "%%")  # The square brackets are Regex special characters. This substitution makes the pattern simpler
+                    # Convert the HTML characters some people have inserted into their ascii equivalents
+                    context=context.replace("&nbsp;", " ").replace("&#8209;", "-")
+                    # In some pages we italicize or bold the con's name, so remove spans of single quotes 2 or longer
+                    context=re.sub("[']{2,}", "", context)
 
                     # An individual name is of one of these forms:
                         #   xxx
@@ -385,12 +392,7 @@ for page in fancyPagesDictByWikiname.values():
                         # [[xxx|yyy]] zzz
                     # But! There can be more than one name on a date if a con converted from real to virtual while changing its name and keeping its dates:
                     # E.g., <s>[[FilKONtario 30]]</s> [[FilKONtari-NO]] (trailing stuff)
-                    # Each of the bracketed chunks can be of one of the three forms, above. (Ugh.)
-                    context=context.replace("[[", "@@").replace("]]", "%%")  # The square brackets are Regex special characters. This substitution makes the pattern simpler
-                    # Convert the HTML characters some people have inserted into their ascii equivalents
-                    context=context.replace("&nbsp;", " ").replace("&#8209;", "-")
-                    # In some pages we italicize or bold the con's name, so remove spans of single quotes 2 or longer
-                    context=re.sub("[']{2,}", "", context)
+                    # Each of the bracketed chunks can be of one of the four forms, above. (Ugh.)
 
                     # [name1, trailing text, cancelled), (name2, trailing text, cancelled)]
                     cons=[("", "", False), ("", "", False)]
