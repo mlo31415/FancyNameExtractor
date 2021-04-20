@@ -391,9 +391,9 @@ for page in fancyPagesDictByWikiname.values():
                     cons=[("", "", False), ("", "", False)]
                     ncons=0
 
-                    if context.count("@@") == 0:
-                        Log("'"+row[conColumn]+"' has no links in it. It will be ignored.")
-                        continue
+                    # if context.count("@@") == 0:
+                    #     Log("'"+row[conColumn]+"' has no links in it. It will be ignored.")
+                    #     continue
                     if context.count("@@") > 2:
                         Log("'"+row[conColumn]+"' has more than two links in it. Only the first will be processed correctly", isError=True)
                     if context.count("@@") != context.count("%%"):
@@ -442,6 +442,9 @@ for page in fancyPagesDictByWikiname.values():
                             s1=m.groups()[0]
                             context=re.sub(pat, "", context).strip()  # Delete the stuff just matched
                             ncons=1
+                        elif len(context) > 0:
+                            c1=False
+                            s1=context
 
                     # # OK, now we have two con chunks, each of one of these forms:
                     # #   link%%
