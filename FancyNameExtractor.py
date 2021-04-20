@@ -525,6 +525,25 @@ for page in fancyPagesDictByWikiname.values():
                     else:
                         Log("Can't happen! ncons="+str(ncons)+"  ndates="+str(ndates), isError=True)
 
+
+# Compare two locations to see if they match
+def LocMatch(loc1: str, loc2: str) -> bool:
+    # First, remove '[[' and ']]' from both locs
+    loc1=loc1.replace("[[", "")
+    loc1=loc1.replace("]]", "")
+    loc2=loc2.replace("[[", "")
+    loc2=loc2.replace("]]", "")
+
+    # We want 'Glasgow, UK' to match 'Glasgow', so deal with that specific pattern
+    m=re.match("^/s*(.*), [A-Z]{2}\s*$", loc1)
+    if m is not None:
+        loc1=m.groups()[0]
+    m=re.match("^/s*(.*), [A-Z]{2}\s*$", loc2)
+    if m is not None:
+        loc2=m.groups()[0]
+
+    return loc1 == loc2
+
 # OK, all of the con series have been mined.  Now let's look through all the con instances and see if we can get more location information from them.
 # (Not all con series tables contain location information.)
 # Generate a report of cases where we have non-identical con information from both sources.
@@ -540,7 +559,7 @@ with open("Con location discrepancies.txt", "w+", encoding='utf-8') as f:
                     conname=CanonicalName(page.Name)
                     cons=[x for x in conventions if x.Link == conname]
                     for con in cons:
-                        if place != con.Loc:
+                        if not LocMatch(place, con.Loc):
                             if con.Loc == "":   # If there previously was no location from the con series page, substitute what we found in the con instance page
                                 con.Loc=place
                                 continue
