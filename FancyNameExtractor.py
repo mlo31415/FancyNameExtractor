@@ -326,21 +326,25 @@ for page in fancyPagesDictByWikiname.values():
                     Log("Virtual="+str(virtual))
 
                     # Ignore anything in trailing parenthesis. (e.g, "(Easter weekend)", "(Memorial Day)")
-                    p=re.compile("\(.*\)\s?$")  # Note that this is greedy. Is that right?
+                    p=re.compile("\(.*\)\s?$")  # Note that this is greedy. Is that the correct things to do?
                     datetext=p.sub("", datetext)
                     # Convert the HTML characters some people have inserted into their ascii equivalents
                     datetext=datetext.replace("&nbsp;", " ").replace("&#8209;", "-")
+                    # Remove leading and trailing spaces
+                    datetext=datetext.strip()
 
-                    # Now look for dates. There are three cases to consider:
+                    # Now look for dates. There are many cases to consider:
                     #1: date                    A simple date (note that there will never be two simple dates in a dates cell)
                     #2: <s>date</s>             A canceled con's date
                     #3: <s>date</s> date        A rescheduled con's date
                     #4: <s>date</s> <s>date</s> A rescheduled and then cancelled con's dates
-                    m=re.match("^\s?(?:(<s>.+?</s>)?)\s?((?:<s>)?.+?(?:</s>)?)?\s?$", datetext)
+                    #5: <s>date</s> <s>date</s> date    A twice-rescheduled con's dates
+                    m=re.match("^(<s>.+?</s>)?\s*(<s>.+?</s>)?\s*(.*)$", datetext)
                     if m is None:
                         Log("Date error: "+datetext)
                         continue
 
+                    # We have three groups up to two of which might be None
                     # [(FDR, cancelled), (FDR, cancelled), trailing text]
                     dates=[FanzineDateRange(), FanzineDateRange(), ""]
                     ndates=0
