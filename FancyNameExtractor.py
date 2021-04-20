@@ -5,6 +5,7 @@ import os
 import re
 from datetime import datetime
 
+import HelpersPackage
 from F3Page import F3Page, DigestPage
 from Log import Log, LogOpen, LogSetHeader
 from HelpersPackage import SplitOnSpan, WindowsFilenameToWikiPagename, WikiExtractLink, FindIndexOfStringInList
@@ -251,7 +252,7 @@ for page in fancyPagesDictByWikiname.values():
         locColumn=None     # The convention's location
         conColumn=None     # The convention's name
         dateColumn=None    # The conventions dates
-        for table in page.Table:
+        for index, table in enumerate(page.Table):
             numcolumns=len(table.Headers)
             LogSetHeader("Processing conseries "+page.Name)
 
@@ -262,12 +263,12 @@ for page in fancyPagesDictByWikiname.values():
             listNameHeaders=["Convention", "Convention Name", "Name"]
             conColumn=Crosscheck(listNameHeaders, table.Headers)
             if conColumn is None:
-                Log("***Can't find Convention column in conseries page "+page.Name, isError=True)
+                Log("***Can't find Convention column in table "+str(index)+" of "+str(len(page.Table))+" of conseries page "+page.Name, isError=True)
 
             listDateHeaders=["Date", "Dates"]
             dateColumn=Crosscheck(listDateHeaders, table.Headers)
             if conColumn is None:
-                Log("***Can't find Dates column in conseries page "+page.Name, isError=True)
+                Log("***Can't find Dates column in table "+str(index)+" of "+str(len(page.Table))+" of conseries page "+page.Name, isError=True)
 
             # If we don't have a convention column and a date column we skip the whole table.
             if conColumn is not None and dateColumn is not None:
@@ -375,7 +376,8 @@ for page in fancyPagesDictByWikiname.values():
                     context=row[conColumn]
 
                     # An individual name is of one of these forms:
-                        # [[xxx]] xxx               Ignore the "zzz"
+                        #   xxx
+                        # [[xxx]] zzz               Ignore the "zzz"
                         # [[xxx|yyy]]               Use just xxx
                         # [[xxx|yyy]] zzz
                     # But! There can be more than one name on a date if a con converted from real to virtual while changing its name and keeping its dates:
@@ -798,8 +800,8 @@ with open("Peoples rejected names.txt", "w+", encoding='utf-8') as f:
                         peopleNames.add(RemoveTrailingParens(fancyPagesDictByWikiname[p].UltimateRedirect))
                         if IsInterestingName(p):
                             peopleNames.add(p)
-                        else:
-                            f.write("Uninteresting: "+p+"\n")
+                        # else:
+                        #     f.write("Uninteresting: "+p+"\n")
                     else:
                         Log("Generating Peoples rejected names.txt: "+p+" is not in fancyPagesDictByWikiname")
             # else:
