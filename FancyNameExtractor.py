@@ -312,9 +312,9 @@ for page in fancyPagesDictByWikiname.values():
                     # The strategy is to sort out each column separately and then try to merge them into conventions
                     # Note that we are disallowing the extreme case of three cons in one row!
 
-                    datetext=row[dateColumn]
-
                     # First the dates
+                    datetext = row[dateColumn]
+
                     # For the dates column, we want to remove the virtual designation as it will just confuse later processing.
                     # We want to handle the case where (virtual) is in parens, but also when it isn't.
                     # We need two patterns here because Python's regex doesn't have balancing groups and we don't want to match unbalanced parens
