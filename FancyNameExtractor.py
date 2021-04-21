@@ -217,9 +217,6 @@ def CanonicalName(name: str) -> str:
         return name
     return g_canonicalNames[name]
 
-# Create a list of convention instances with useful information about them stored in a ConInfo structure
-conventions=[]
-
 # Scan for a virtual flag
 # Return True/False and remaining text after V-flag is removed
 def ScanForVirtual(alternatives: str, input: str) -> Tuple[bool, str]:
@@ -466,10 +463,11 @@ for page in fancyPagesDictByWikiname.values():
 
                     # Don't add duplicate entries
                     def AppendCon(ci: ConInfo) -> None:
-                        hits=[x for x in conventions if ci.Link == x.Link and ci.DateRange == x.DateRange]
+                        hits=[x for x in conventions if ci.NameInSeriesList == x.NameInSeriesList and ci.DateRange == x.DateRange and ci.Cancelled == x.Cancelled and ci.Virtual == x.Virtual]
                         if len(hits) == 0:
                             conventions.append(ci)
                         else:
+                            Log("AppendCon: duplicate - "+str(ci)+"   and   "+str(hits[0]))
                             # If there are two sources for the convention's location and one is empty, use the other.
                             if len(hits[0].Loc) == 0:
                                 hits[0].Loc=ci.Loc
