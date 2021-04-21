@@ -708,7 +708,7 @@ Log("***Writing reports")
 #     <referring page>
 #     <referring page>
 #     ...
-#     **<cannonical name>
+#     **<canonical name>
 #     ...
 Log("Writing: Referring pages.txt")
 with open("Referring pages.txt", "w+", encoding='utf-8') as f:
