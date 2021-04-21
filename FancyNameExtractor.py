@@ -354,16 +354,9 @@ for page in fancyPagesDictByWikiname.values():
                                 Log("??? "+page.Name+" has long duration: "+str(d), isError=True)
                             if not d.IsEmpty():
                                 dates.append(d)
-                    if len(dates) == 0: #TODO: What does this do??
-                        if m is None or len(m.groups()) < 3:
-                            Log("***Not enough groups found for date", isError=True)
-                            continue
-                        if m.groups()[2] is not None and len(m.groups()[2]) > 0:
-                            d=FanzineDateRange().Match(m.groups()[2])
-                            if not d.IsEmpty():
-                                dates.append(d)
+
                     if len(dates) == 0:
-                        Log("no dates found")
+                        Log("***No dates found in "+page.Name+"  row: "+ str(row), isError=True)
                     elif len(dates) == 1:
                         Log("1 date: "+str(dates[0])+"   cancelled="+str(dates[0].Cancelled))
                     elif len(dates) == 2:
