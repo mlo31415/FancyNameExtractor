@@ -373,6 +373,8 @@ for page in fancyPagesDictByWikiname.values():
 
                     # Get the corresponding convention name(s).
                     context=row[conColumn]
+                    # There are a few cases where we have [[aaa]]/[[[bbb]] (a convention with two names).  Separate them into two names.
+                    context=context.replace("]]/[[", "]] [[")
                     # Clean up the text
                     context=context.replace("[[", "@@").replace("]]", "%%")  # The square brackets are Regex special characters. This substitution makes the patterns simpler to read
                     # Convert the HTML characters some people have inserted into their ascii equivalents
