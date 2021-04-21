@@ -5,7 +5,6 @@ import os
 import re
 from datetime import datetime
 
-import HelpersPackage
 from F3Page import F3Page, DigestPage
 from Log import Log, LogOpen, LogSetHeader
 from HelpersPackage import SplitOnSpan, WindowsFilenameToWikiPagename, WikiExtractLink, FindIndexOfStringInList
@@ -186,7 +185,7 @@ class ConInfo:
         self.Cancelled: bool=Cancelled
 
     def __str__(self) -> str:
-        s="Link: "+self.Link+"  Name="+self.NameInSeriesList+"  Date="+str(self.DateRange)+"  Location="+self.Loc
+        s="Link: "+self.Link if self.Link is not None else "None"+"  Name="+self.NameInSeriesList+"  Date="+str(self.DateRange)+"  Location="+self.Loc
         if self.Cancelled:
             s+=" cancelled=True"
         if self.Virtual:
@@ -327,7 +326,7 @@ for page in fancyPagesDictByWikiname.values():
 
                     # Ignore anything in trailing parenthesis. (e.g, "(Easter weekend)", "(Memorial Day)")
                     p=re.compile("\(.*\)\s?$")  # Note that this is greedy. Is that the correct things to do?
-                    datetext=p.sub("", datetext)
+                    datetext=re.sub("\(.*\)\s?$", "", datetext)
                     # Convert the HTML characters some people have inserted into their ascii equivalents
                     datetext=datetext.replace("&nbsp;", " ").replace("&#8209;", "-")
                     # Remove leading and trailing spaces
@@ -345,17 +344,17 @@ for page in fancyPagesDictByWikiname.values():
                         continue
 
                     # We have three groups up to two of which might be None
-                    dates=[]
-                    for i in range(2):
-                        if (m.groups()[i] is not None and len(m.groups()[i])) > 0:
-                            c, s=ScanForS(m.groups()[i])
+                    dates:List[FanzineDateRange]=[]
+                    for g in m.groups():
+                        if g is not None and len(g) > 0:
+                            c, s=ScanForS(g)
                             d=FanzineDateRange().Match(s)
                             d.Cancelled=c
                             if d.Duration() > 6:
                                 Log("??? "+page.Name+" has long duration: "+str(d), isError=True)
                             if not d.IsEmpty():
                                 dates.append(d)
-                    if len(dates) == 0:
+                    if len(dates) == 0: #TODO: What does this do??
                         if m is None or len(m.groups()) < 3:
                             Log("***Not enough groups found for date", isError=True)
                             continue
@@ -379,11 +378,15 @@ for page in fancyPagesDictByWikiname.values():
                     # Get the corresponding convention name(s).
                     context=row[conColumn]
                     # Clean up the text
-                    context=context.replace("[[", "@@").replace("]]", "%%")  # The square brackets are Regex special characters. This substitution makes the pattern simpler
+                    context=context.replace("[[", "@@").replace("]]", "%%")  # The square brackets are Regex special characters. This substitution makes the patterns simpler to read
                     # Convert the HTML characters some people have inserted into their ascii equivalents
                     context=context.replace("&nbsp;", " ").replace("&#8209;", "-")
                     # In some pages we italicize or bold the con's name, so remove spans of single quotes 2 or longer
                     context=re.sub("[']{2,}", "", context)
+                    context=context.strip()
+
+                    if context.count("@@") != context.count("%%"):
+                        Log("'"+row[conColumn]+"' has unbalanced double brackets. This is unlikely to end well...", isError=True)
 
                     # An individual name is of one of these forms:
                         #   xxx
@@ -395,16 +398,20 @@ for page in fancyPagesDictByWikiname.values():
                     # Each of the bracketed chunks can be of one of the four forms, above. (Ugh.)
 
                     # [name1, trailing text, cancelled), (name2, trailing text, cancelled)]
-                    cons=[("", "", False), ("", "", False)]
-                    ncons=0
+                    class Con:
+                        def __init__(self, Name: str="", Link: str="", Cancelled: bool=False):
+                            self.Name: str=Name
+                            self.Cancelled: bool=Cancelled
+                            self.Link=Link
 
-                    # if context.count("@@") == 0:
-                    #     Log("'"+row[conColumn]+"' has no links in it. It will be ignored.")
-                    #     continue
-                    if context.count("@@") > 2:
-                        Log("'"+row[conColumn]+"' has more than two links in it. Only the first will be processed correctly", isError=True)
-                    if context.count("@@") != context.count("%%"):
-                        Log("'"+row[conColumn]+"' has unbalanced double brackets. This is unlikely to end well...", isError=True)
+                        @property
+                        def Link(self) -> Optional[str]:
+                            return self._link
+                        @Link.setter
+                        def Link(self, val: Optional[str]):
+                            if val is not None and len(val) == 0:
+                                val=None
+                            self._link=val
 
                     # Definitions:
                     #   l1 -- first link
@@ -412,99 +419,58 @@ for page in fancyPagesDictByWikiname.values():
                     #   c1 -- was it cancelled?
                     #   ...and similarly for 2
 
-                    # Operate by nibbing off bits. First we look for a <s>con name</s> indicating cancelled
-                    context=context.strip()
-                    pat="<s>\w*@@(.+?)%%\w*</s>"
-                    m=re.match(pat, context)
-                    s1=""
-                    s2=""
-                    c1=False
-                    c2=False
-                    if m is not None:
-                        c1=True
-                        s1=m.groups()[0]
-                        context=re.sub(pat, "", context).strip()    # Delete the stuff just matched
-                        ncons=1
-
-                        pat="<s>\w*@@(.+?)%%\w*</s>"
-                        m=re.match(pat, context)
+                    def SplitConText(constr: str) -> Tuple[str, str]:
+                        # Now convert all link|text to separate link and text
+                        # Do this for s1 and s2
+                        m=re.match("@@(.+)\|(.+)%%$", constr)       # Split xxx|yyy into xxx and yyy
                         if m is not None:
-                            c2=True
-                            s2=m.groups()[0]
-                            context=re.sub(pat, "", context).strip()  # Delete the stuff just matched
-                            ncons+=1
-                        else:
-                            pat="@@(.+?)%%"
-                            m=re.match(pat, context)
-                            if m is not None:
-                                c2=False
-                                s2=m.groups()[0]
-                                context=re.sub(pat, "", context)  # Delete the stuff just matched
-                                ncons+=1
-                    else:
-                        pat="@@(.+?)%%"
-                        m=re.match(pat, context)
+                            return m.groups()[0], m.groups()[1]
+                        return "", constr
+
+                    # We assume that the cancelled con names lead the uncancelled ones
+                    def NibbleCon(constr: str) -> Tuple[Optional[Con], str]:
+                        constr=constr.strip()
+                        if len(constr) == 0:
+                            return None, constr
+#TODO: Still need to handle things like "cancelled" and "virtual" and suchlike
+                        # We want to take the leading con name
+                        # There can be at most one con name which isn't cancelled, and it should be at the end, so first look for a <s>...</s> bracketed con names, if any
+                        pat="^<s>(.*?)</s>"
+                        m=re.match(pat, constr)
                         if m is not None:
-                            c1=False
-                            s1=m.groups()[0]
-                            context=re.sub(pat, "", context).strip()  # Delete the stuff just matched
-                            ncons=1
-                        elif len(context) > 0:
-                            c1=False
-                            s1=context
+                            s=m.groups()[0]
+                            constr=re.sub(pat, "", constr).strip()  # Remove the matched part and trim whitespace
+                            l, t=SplitConText(s)
+                            con=Con(Name=t, Link=l, Cancelled=True)
+                            return con, constr
 
-                    # # OK, now we have two con chunks, each of one of these forms:
-                    # #   link%%
-                    # #   link|text%%
-                    # #   link|text%% trailing
+                        # OK, there are no <s>...</s> con names left.  So what is left might be [[name]] or [[link|name]]
+                        pat="^@@(.*?)%%"
+                        m=re.match(pat, constr)
+                        if m is not None:
+                            s=m.groups()[0]
+                            constr=re.sub(pat, "", constr).strip()  # Remove the matched part and trim whitespace
+                            l, t=SplitConText(s)
+                            con=Con(Name=t, Link=l, Cancelled=False)
+                            return con, constr
 
-                    # Now convert all link|text to separate link and text
-                    # Do this for s1 and s2
-                    m=re.match("(.+)\|(.+)$", s1)       # Split xxx|yyy into xxx and yyy
-                    if m is not None:
-                        l1=m.groups()[0]
-                        t1=m.groups()[1]
-                    else:
-                        l1=s1
-                        t1=s1
+#TODO:  What's left may be a bare con name or it may be a keyword like "held online" or "virtual".  Need to check this on real data
+                        con=Con(Name=constr)
+                        return con, ""
 
-                    m=re.match("(.+)\|(.+)$", s2)
-                    if m is not None:
-                        l2=m.groups()[0]
-                        t2=m.groups()[1]
-                    else:
-                        l2=s2
-                        t2=s2
-
-                    Log(str(ncons)+" cons")
-                    Log("         s1="+s1+"  c1="+str(c1)+"  l1="+l1+"  t1="+t1)
-                    Log("         s2="+s2+"  c2="+str(c2)+"  l2="+l2+"  t2="+t2)
-
-                    # # Now split link%%trailing to link and trailing
-                    # m=re.match("(.*)%%(.*)$", s1)
-                    # l1=t1=""
-                    # if m is not None:
-                    #     l1=m.groups()[0]
-                    #     t1=m.groups()[1]
-                    # else:
-                    #     l1=s1.replace("%%", "")
-                    #     t1=""
-                    # l2=t2=""
-                    # m=re.match("(.*)%%(.*)$", s2)
-                    # if m is not None:
-                    #     l2=m.groups()[0]
-                    #     t2=m.groups()[1]
-                    # else:
-                    #     l2=s2.replace("%%", "")
-                    #     t2=""
-                    cons=[(l1, t1, c1), (l2, t2, c2)]
+                    cons: List[Con]=[]
+                    while len(context) > 0:
+                        con, context=NibbleCon(context)
+                        if con is None:
+                            break
+                        cons.append(con)
 
                     # Now we have cons and dates and need to create the appropriate convention entries.
-                    if ncons == 0 or len(dates) == 0:
-                        Log("Scan abandoned: ncons="+str(ncons)+"  len(dates)="+str(len(dates)), isError=True)
+                    if len(cons) == 0 or len(dates) == 0:
+                        Log("Scan abandoned: ncons="+str(len(cons))+"  len(dates)="+str(len(dates)), isError=True)
                         continue
 
-                    # Don't add duplicate entries'
+                    # Don't add duplicate entries
                     def AppendCon(ci: ConInfo) -> None:
                         hits=[x for x in conventions if ci.Link == x.Link and ci.DateRange == x.DateRange]
                         if len(hits) == 0:
@@ -514,32 +480,33 @@ for page in fancyPagesDictByWikiname.values():
                             if len(hits[0].Loc) == 0:
                                 hits[0].Loc=ci.Loc
 
-                    if ncons == len(dates):
-                        for i in range(ncons):
-                            # Add the 1st con (or only con) with the 1st (or only) date
-                            cancelled=cons[i][2] or dates[i].Cancelled
+                    if len(cons) == len(dates):
+                        # Add each con with the corresponding date
+                        for i in range(len(cons)):
+                            cancelled=cons[i].Cancelled or dates[i].Cancelled
                             v=False if cancelled else virtual
-                            ci=ConInfo(Link=cons[i][0], Text=cons[i][0], Loc=conlocation, DateRange=dates[i], Virtual=v, Cancelled=cancelled)
+                            ci=ConInfo(Link=cons[i].Link, Text=cons[i].Name, Loc=conlocation, DateRange=dates[i], Virtual=v, Cancelled=cancelled)
                             if ci.DateRange.IsEmpty():
                                 Log("***"+ci.Link+"has an empty date range: "+str(ci.DateRange), isError=True)
                             Log("#append: "+str(ci))
                             AppendCon(ci)
-                    elif ncons == 2 and len(dates) == 1:
-                        for i in range(ncons):
-                            cancelled=cons[i][2] or dates[0].Cancelled
+                    elif len(cons) > 1 and len(dates) == 1:
+                        # Multiple cons all with the same dates
+                        for i in range(len(cons)):
+                            cancelled=cons[i].Cancelled or dates[0].Cancelled
                             v=False if cancelled else virtual
-                            ci=ConInfo(Link=cons[i][0], Text=cons[i][0], Loc=conlocation, DateRange=dates[0], Virtual=v, Cancelled=cancelled)
+                            ci=ConInfo(Link=cons[i].Link, Text=cons[i].Name, Loc=conlocation, DateRange=dates[0], Virtual=v, Cancelled=cancelled)
                             AppendCon(ci)
                             Log("#append: "+str(ci))
-                    elif ncons == 1 and len(dates) == 2:
+                    elif len(cons) == 1 and len(dates) > 1:
                         for i in range(len(dates)):
-                            cancelled=cons[0][2] or dates[i].Cancelled
+                            cancelled=cons[0].Cancelled or dates[i].Cancelled
                             v=False if cancelled else virtual
-                            ci=ConInfo(Link=cons[0][0], Text=cons[0][0], Loc=conlocation, DateRange=dates[i], Virtual=v, Cancelled=cancelled)
+                            ci=ConInfo(Link=cons[0].Link, Text=cons[0].Name, Loc=conlocation, DateRange=dates[i], Virtual=v, Cancelled=cancelled)
                             AppendCon(ci)
                             Log("#append: "+str(ci))
                     else:
-                        Log("Can't happen! ncons="+str(ncons)+"  len(dates)="+str(len(dates)), isError=True)
+                        Log("Can't happen! ncons="+str(len(cons))+"  len(dates)="+str(len(dates)), isError=True)
 
 
 # Compare two locations to see if they match
