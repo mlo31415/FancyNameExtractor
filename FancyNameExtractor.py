@@ -241,7 +241,8 @@ def ScanForS(input: str) -> Tuple[bool, str]:
         return False, input
     return True, m.groups()[0]
 
-
+# Create a list of convention instances with useful information about them stored in a ConInfo structure
+conventions: List[ConInfo]=[]
 for page in fancyPagesDictByWikiname.values():
 
     # First, see if this is a Conseries page
@@ -655,8 +656,8 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
 # Build up a dictionary of redirects.  It is indexed by the canonical name of a page and the value is the canonical name of the ultimate redirect
 # Build up an inverse list of all the pages that redirect *to* a given page, also indexed by the page's canonical name. The value here is a list of canonical names.
 Log("***Create inverse redirects tables")
-redirects={}            # Key is the name of a redirect; value is the ultimate destination
-inverseRedirects={}     # Key is the name of a destination page, value is a list of names of pages that redirect to it
+redirects: Dict[str, str]={}            # Key is the name of a redirect; value is the ultimate destination
+inverseRedirects:Dict[str, List[str]]={}     # Key is the name of a destination page, value is a list of names of pages that redirect to it
 for fancyPage in fancyPagesDictByWikiname.values():
     if fancyPage.Redirect is not None:
         redirects[fancyPage.Name]=fancyPage.UltimateRedirect
@@ -687,7 +688,7 @@ with open("Untagged locales.txt", "w+", encoding='utf-8') as f:
 # The key is a page's canonical name; the value is a list of pages at which they are referenced.
 
 # First locate all the people and create empty entries for them
-peopleReferences={}
+peopleReferences: Dict[str, str]={}
 Log("***Creating dict of people references")
 for fancyPage in fancyPagesDictByWikiname.values():
     if fancyPage.IsPerson():
