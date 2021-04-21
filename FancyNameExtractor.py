@@ -200,7 +200,7 @@ class ConInfo:
 Log("***Analyzing convention series tables")
 
 # Is at least one item in inputlist also in checklist?
-def Crosscheck(inputList, checkList) -> bool:
+def Crosscheck(inputList, checkList) -> int:
     ListofHits=[FindIndexOfStringInList(checkList, x) for x in inputList]
     n=next((item for item in ListofHits if item is not None), None)
     return n
