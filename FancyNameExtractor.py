@@ -219,13 +219,15 @@ def CanonicalName(name: str) -> str:
 
 # Scan for a virtual flag
 # Return True/False and remaining text after V-flag is removed
-def ScanForVirtual(alternatives: str, input: str) -> Tuple[bool, str]:
+def ScanForVirtual(input: str) -> Tuple[bool, str]:
     # First look for the alternative contained in parens *anywhere* in the text
-    newval=re.sub("\((?:"+alternatives+")\)", "", input, flags=re.IGNORECASE)  # Check w/parens 1st so that if parens exist, they get removed.
+    pat = "\((:?virtual|online|held online|moved online|virtual convention)\)"
+    newval = re.sub(pat, "", input,
+                    flags=re.IGNORECASE)  # Check w/parens 1st so that if parens exist, they get removed.
     if input != newval:
         return True, newval.strip()
     # Now look for alternatives by themselves.  So we don't pick up junk, we require that the non-parenthesized alternatives be alone in the cell
-    newval=re.sub("\s*("+alternatives+")\s*$", "", input, flags=re.IGNORECASE)
+    newval = re.sub("\s*" + pat + "\s*$", "", input, flags=re.IGNORECASE)
     if input != newval:
         return True, newval.strip()
     return False, input
@@ -315,10 +317,10 @@ for page in fancyPagesDictByWikiname.values():
                     # For the dates column, we want to remove the virtual designation as it will just confuse later processing.
                     # We want to handle the case where (virtual) is in parens, but also when it isn't.
                     # We need two patterns here because Python's regex doesn't have balancing groups and we don't want to match unbalanced parens
-                    alternatives="virtual|online|held online|moved online|virtual convention"
-                    virtual, datetext=ScanForVirtual(alternatives, datetext)
+
+                    virtual, datetext=ScanForVirtual(datetext)
                     for col in row:
-                        v2, _=ScanForVirtual(alternatives, col)
+                        v2, _=ScanForVirtual(col)
                         virtual=virtual or v2
                     Log("Virtual="+str(virtual))
 
