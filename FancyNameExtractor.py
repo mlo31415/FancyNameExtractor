@@ -476,6 +476,7 @@ for page in fancyPagesDictByWikiname.values():
                         # Add each con with the corresponding date
                         for i in range(len(cons)):
                             cancelled=cons[i].Cancelled or dates[i].Cancelled
+                            dates[i].Cancelled=False    # We've xferd this to ConInfo and don't still want it here because it would print twice
                             v=False if cancelled else virtual
                             ci=ConInfo(Link=cons[i].Link, Text=cons[i].Name, Loc=conlocation, DateRange=dates[i], Virtual=v, Cancelled=cancelled)
                             if ci.DateRange.IsEmpty():
@@ -484,17 +485,19 @@ for page in fancyPagesDictByWikiname.values():
                             AppendCon(ci)
                     elif len(cons) > 1 and len(dates) == 1:
                         # Multiple cons all with the same dates
-                        for i in range(len(cons)):
-                            cancelled=cons[i].Cancelled or dates[0].Cancelled
+                        for co in cons:
+                            cancelled=co.Cancelled or dates[0].Cancelled
+                            dates[0].Cancelled = False
                             v=False if cancelled else virtual
-                            ci=ConInfo(Link=cons[i].Link, Text=cons[i].Name, Loc=conlocation, DateRange=dates[0], Virtual=v, Cancelled=cancelled)
+                            ci=ConInfo(Link=co.Link, Text=cons[i].Name, Loc=conlocation, DateRange=dates[0], Virtual=v, Cancelled=cancelled)
                             AppendCon(ci)
                             Log("#append: "+str(ci))
                     elif len(cons) == 1 and len(dates) > 1:
-                        for i in range(len(dates)):
-                            cancelled=cons[0].Cancelled or dates[i].Cancelled
+                        for dt in dates:
+                            cancelled=cons[0].Cancelled or dt.Cancelled
+                            dt.Cancelled = False
                             v=False if cancelled else virtual
-                            ci=ConInfo(Link=cons[0].Link, Text=cons[0].Name, Loc=conlocation, DateRange=dates[i], Virtual=v, Cancelled=cancelled)
+                            ci=ConInfo(Link=cons[0].Link, Text=cons[0].Name, Loc=conlocation, DateRange=dt, Virtual=v, Cancelled=cancelled)
                             AppendCon(ci)
                             Log("#append: "+str(ci))
                     else:
