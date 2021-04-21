@@ -358,14 +358,14 @@ for page in fancyPagesDictByWikiname.values():
                     if len(dates) == 0:
                         Log("***No dates found in "+page.Name+"  row: "+ str(row), isError=True)
                     elif len(dates) == 1:
-                        Log("1 date: "+str(dates[0])+"   cancelled="+str(dates[0].Cancelled))
+                        Log("1 date: "+str(dates[0]))
                     elif len(dates) == 2:
-                        Log("2 dates: " + str(dates[0]) + "   cancelled=" + str(dates[0].Cancelled))
-                        Log("           " + str(dates[1]) + "   cancelled=" + str(dates[1].Cancelled))
+                        Log("2 dates: " + str(dates[0]))
+                        Log("           " + str(dates[1]))
                     else:
-                        Log("3 dates: "+str(dates[0])+"   cancelled="+str(dates[0].Cancelled))
-                        Log("           "+str(dates[1])+"   cancelled="+str(dates[1].Cancelled))
-                        Log("           "+str(dates[2])+"   cancelled="+str(dates[2].Cancelled))
+                        Log("3 dates: "+str(dates[0]))
+                        Log("           "+str(dates[1]))
+                        Log("           "+str(dates[2]))
 
 
                     # Get the corresponding convention name(s).
