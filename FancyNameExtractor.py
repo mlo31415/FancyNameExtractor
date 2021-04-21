@@ -423,6 +423,9 @@ for page in fancyPagesDictByWikiname.values():
                         m=re.match("@@(.+)\|(.+)%%$", constr)       # Split xxx|yyy into xxx and yyy
                         if m is not None:
                             return m.groups()[0], m.groups()[1]
+                        m = re.match("@@(.+)%%$", constr)  # Split xxx|yyy into xxx and yyy
+                        if m is not None:
+                            return "", m.groups()[0]
                         return "", constr
 
                     # We assume that the cancelled con names lead the uncancelled ones
