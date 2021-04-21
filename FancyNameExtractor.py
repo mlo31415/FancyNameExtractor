@@ -338,34 +338,37 @@ for page in fancyPagesDictByWikiname.values():
                     #3: <s>date</s> date        A rescheduled con's date
                     #4: <s>date</s> <s>date</s> A rescheduled and then cancelled con's dates
                     #5: <s>date</s> <s>date</s> date    A twice-rescheduled con's dates
-                    m=re.match("^(<s>.+?</s>)?\s*(<s>.+?</s>)?\s*(.*)$", datetext)
-                    if m is None:
+                    #m=re.match("^(:?(<s>.+?</s>)\s*)*(.*)$", datetext)
+                    pat="<s>.+?</s>"
+                    ds=re.findall(pat, datetext)
+                    if len(ds) > 0:
+                        datetext=re.sub(pat, "", datetext).strip()
+                    if len(datetext)> 0:
+                        ds.append(datetext)
+                    if len(ds) is None:
                         Log("Date error: "+datetext)
                         continue
 
-                    # We have three groups up to two of which might be None
+                    # We have N groups up to N-1 of which might be None
                     dates:List[FanzineDateRange]=[]
-                    for g in m.groups():
-                        if g is not None and len(g) > 0:
-                            c, s=ScanForS(g)
-                            d=FanzineDateRange().Match(s)
-                            d.Cancelled=c
-                            if d.Duration() > 6:
-                                Log("??? "+page.Name+" has long duration: "+str(d), isError=True)
-                            if not d.IsEmpty():
-                                dates.append(d)
+                    for d in ds:
+                        if d is not None and len(d) > 0:
+                            c, s=ScanForS(d)
+                            dr=FanzineDateRange().Match(s)
+                            dr.Cancelled=c
+                            if dr.Duration() > 6:
+                                Log("??? "+page.Name+" has long duration: "+str(dr), isError=True)
+                            if not dr.IsEmpty():
+                                dates.append(dr)
 
                     if len(dates) == 0:
                         Log("***No dates found in "+page.Name+"  row: "+ str(row), isError=True)
                     elif len(dates) == 1:
                         Log("1 date: "+str(dates[0]))
-                    elif len(dates) == 2:
-                        Log("2 dates: " + str(dates[0]))
-                        Log("           " + str(dates[1]))
                     else:
-                        Log("3 dates: "+str(dates[0]))
-                        Log("           "+str(dates[1]))
-                        Log("           "+str(dates[2]))
+                        Log(str(len(dates))+" dates: " + str(dates[0]))
+                        for d in dates[1:]:
+                            Log("           " + str(d))
 
 
                     # Get the corresponding convention name(s).
