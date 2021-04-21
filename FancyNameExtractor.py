@@ -223,7 +223,7 @@ conventions=[]
 # Scan for a virtual flag
 # Return True/False and remaining text after V-flag is removed
 def ScanForVirtual(alternatives: str, input: str) -> Tuple[bool, str]:
-    # First look for the alternative contain in parens *anywhere* in the text
+    # First look for the alternative contained in parens *anywhere* in the text
     newval=re.sub("\((?:"+alternatives+")\)", "", input, flags=re.IGNORECASE)  # Check w/parens 1st so that if parens exist, they get removed.
     if input != newval:
         return True, newval.strip()
