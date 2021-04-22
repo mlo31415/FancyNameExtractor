@@ -253,7 +253,6 @@ for page in fancyPagesDictByWikiname.values():
         dateColumn=None    # The conventions dates
         for index, table in enumerate(page.Table):
             numcolumns=len(table.Headers)
-            LogSetHeader("Processing conseries "+page.Name)
 
             listLocationHeaders=["Location"]
             locColumn=Crosscheck(listLocationHeaders, table.Headers)
@@ -262,12 +261,12 @@ for page in fancyPagesDictByWikiname.values():
             listNameHeaders=["Convention", "Convention Name", "Name"]
             conColumn=Crosscheck(listNameHeaders, table.Headers)
             if conColumn is None:
-                Log("***Can't find Convention column in table "+str(index)+" of "+str(len(page.Table))+" of conseries page "+page.Name, isError=True)
+                Log("***Can't find Convention column in table "+str(index+1)+" of "+str(len(page.Table)), isError=True)
 
             listDateHeaders=["Date", "Dates"]
             dateColumn=Crosscheck(listDateHeaders, table.Headers)
             if conColumn is None:
-                Log("***Can't find Dates column in table "+str(index)+" of "+str(len(page.Table))+" of conseries page "+page.Name, isError=True)
+                Log("***Can't find Dates column in table "+str(index+1)+" of "+str(len(page.Table)), isError=True)
 
             # If we don't have a convention column and a date column we skip the whole table.
             if conColumn is not None and dateColumn is not None:
@@ -275,11 +274,11 @@ for page in fancyPagesDictByWikiname.values():
                 # Walk the convention table, extracting the individual conventions
                 # (Sometimes there will be multiple table
                 if table.Rows is None:
-                    Log("***Table has no rows: "+page.Name, isError=True)
+                    Log("***Table "+str(index+1)+" of "+str(len(page.Table))+"has no rows", isError=True)
                     continue
 
                 for row in table.Rows:
-                    LogSetHeader("Processing: "+str(row))
+                    LogSetHeader("Processing: "+page.Name+"  row: "+str(row))
                     # Skip rows with merged columns, and rows where either the date or convention cell is empty
                     if len(row) < numcolumns-1 or len(row[conColumn]) == 0  or len(row[dateColumn]) == 0:
                         continue
@@ -357,12 +356,12 @@ for page in fancyPagesDictByWikiname.values():
                             dr=FanzineDateRange().Match(s)
                             dr.Cancelled=c
                             if dr.Duration() > 6:
-                                Log("??? "+page.Name+" has long duration: "+str(dr), isError=True)
+                                Log("??? convention has long duration: "+str(dr), isError=True)
                             if not dr.IsEmpty():
                                 dates.append(dr)
 
                     if len(dates) == 0:
-                        Log("***No dates found in "+page.Name+"  row: "+ str(row), isError=True)
+                        Log("***No dates found", isError=True)
                     elif len(dates) == 1:
                         Log("1 date: "+str(dates[0]))
                     else:
