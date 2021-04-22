@@ -612,7 +612,7 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
     f.write("If a convention is missing from the list, it may be due to it having been added only recently, (this list was generated ")
     f.write(datetime.now().strftime("%A %B %d, %Y  %I:%M:%S %p")+" EST)")
     f.write(" or because we do not yet have information on the convention or because the convention's listing in Fancy 3 is a bit odd ")
-    f.write("and the program which creates this list isn't recognizing it.  In any case, we welcome help making it more complete!\n\n")
+    f.write("and the program which creates this list isn't parsing it.  In any case, we welcome help making it more complete!\n\n")
     f.write("The list currently has "+str(len(conventions))+" conventions.\n")
     currentYear=None
     currentDateRange=None
