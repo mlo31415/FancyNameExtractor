@@ -130,7 +130,7 @@ def BaseFormOfLocaleName(localeBaseForms: Dict[str, str], name: str) -> str:
 multiWordCities={
     "Angeles, CA": "Los",
     "Antonio, TX": "San",
-    "Beach, CA": ["Long", "'Huntington"],
+    "Beach, CA": ["Long", "Huntington"],
     "Beach, FL": ["West Palm", "Cocoa", "Palm"],
     "Bend, IN": "South",
     "Brook, IL": "Oak",
@@ -205,19 +205,21 @@ def ScanForLocales(s: str) -> Optional[Set[str]]:
     # ([A-Z][a-z]+\]*,?\s)+     Picks up one or more leading capitalized, space (or comma)-separated words
     # \[*  and  \]*             Lets us ignore spans of [[brackets]]
     # The "[^a-zA-Z]"           Prohibits another letter immediately following the putative 2-UC state
-    m=re.search("in \[*([A-Z][a-z]+\]*,?\s)+(\[*[A-Z]{2})\]*[^a-zA-Z]", " "+s+" ")    # The extra spaces are so that there is at least one character before and after a possible locale
+    m=re.search("in \[*([A-Z][a-z]+\s+)?([A-Z][a-z]+\s+)?([A-Z][a-z]+,?\s+)\]*\[*([A-Z]{2})\]*[^a-zA-Z]", " "+s+" ")    # The extra spaces are so that there is at least one character before and after a possible locale
     if m is not None and len(m.groups()) > 1:
-        city=m.groups()[0]
-        state=m.groups()[1]
+        groups=[x for x in m.groups() if x is not None]
+        city=" ".join(groups[0:-1])
         city=city.replace("[", " ").replace("]", " ")     # Get rid of brackets
         city=city.replace(",", " ")                         # Get rid of commas
         city=re.sub("\s+", " ", city).strip()               # Multiple spaces go to single space and trim the result
+        city=city.split()
+
+        state=groups[-1]
         state=state.replace("[", "").replace("]", "").strip()
 
         impossiblestates = {"SF", "MC", "PR", "II", "IV", "VI", "IX", "XI", "XX", "VL", "XL", "LI", "LV", "LX"}  # PR: Progress Report; others Roman numerals
         if state not in impossiblestates:
             # City should consist of one or more space-separated capitalized tokens. Split them into a list
-            city=city.split()
             if len(city) > 0:
                 skippers = {"Astra", "Con"}  # Second word of multi-word con names
                 if city[-1] not in skippers:
@@ -225,14 +227,22 @@ def ScanForLocales(s: str) -> Optional[Set[str]]:
                     # If not -- if we have *exactly* "in Xxxx[,] XX" -- then we have a local (as best we can tell).  Return it.
                     loc = city[-1]+", "+state
                     if len(city) == 1:
-                        return set([loc])
+                        return {loc}
                     # Apparently we have more than one leading word.  Check the last word+state against the multiWordCities dictionary.
                     # If the multi-word city is found, we're good.
                     if loc in multiWordCities.keys():
-                        # Check the preceeding token int he name against the token in multiWordCities
-                        token=multiWordCities[loc]
-                        if token == city[-2]:
-                            return set([city[-1]+" "+loc])
+                        # Check the preceding token in the name against the token in multiWordCities
+                        tokens=multiWordCities[loc]
+                        if type(tokens) == str:
+                            if tokens == " ".join(city[:-1]):
+                                return {tokens+" "+loc}
+                        else:
+                            # It's a list of strings
+                            for token in tokens:
+                                if token == " ".join(city[:-1]):
+                                    return {token+" "+loc}
+
+
     # OK, we can't find the Xxxx, XX pattern
     # Look for city+spelled-out country
     # We'll look for a country name preceded by a Capitalized word
