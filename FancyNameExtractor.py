@@ -459,7 +459,6 @@ for page in fancyPagesDictByWikiname.values():
                     # Whatcon 20: This Year's Theme -- need to split on the colon
                     # Each of the bracketed chunks can be of one of the four forms, above. (Ugh.)
 
-                    # [name1, trailing text, cancelled), (name2, trailing text, cancelled)]
                     class Con:
                         def __init__(self, Name: str="", Link: str="", Cancelled: bool=False):
                             self.Name: str=Name
@@ -497,7 +496,7 @@ for page in fancyPagesDictByWikiname.values():
                         constr=constr.strip()
                         if len(constr) == 0:
                             return None, constr
-#TODO: Still need to handle things like "cancelled" and "virtual" and suchlike
+
                         # We want to take the leading con name
                         # There can be at most one con name which isn't cancelled, and it should be at the end, so first look for a <s>...</s> bracketed con names, if any
                         pat="^<s>(.*?)</s>"
@@ -520,8 +519,13 @@ for page in fancyPagesDictByWikiname.values():
                             return con, constr
 
 #TODO:  What's left may be a bare con name or it may be a keyword like "held online" or "virtual".  Need to check this on real data
-                        con=Con(Name=constr)
-                        return con, ""
+                        if len(constr) > 0:
+                            if constr[0] == ":":
+                                return None, ""
+                            if ":" in constr:
+                                constr=constr.split(":")[0]
+                            con=Con(Name=constr)
+                            return con, ""
 
                     cons: List[Con]=[]
                     while len(context) > 0:
