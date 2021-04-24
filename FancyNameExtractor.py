@@ -84,7 +84,7 @@ for val in fancyPagesDictByWikiname.values():
 
 # Build a locale database
 Log("\n\n***Building a locale dictionary")
-locales=set()  # We use a set to eliminate duplicates and to speed checks
+locales: Set[str]=set()  # We use a set to eliminate duplicates and to speed checks
 for page in fancyPagesDictByWikiname.values():
     if "Locale" in page.Tags:
         LogSetHeader("Processing Locale "+page.Name)
@@ -109,46 +109,110 @@ for locale in locales:
         if city not in localeBaseForms.keys():
             localeBaseForms[city]=city+", "+state
 
+# Fond the base form of a locale.  E.g., the base form of "Cambridge, MA" is "Boston, MA".
 def BaseFormOfLocaleName(localeBaseForms: Dict[str, str], name: str) -> str:
-    # There are certain names which are the names of minor US/Canada cities usually written as "Name, XX" and also important cities which are written just "Name"
-    # This table lists names which should not be converted to the so-called base form, as it's probably wrong.
-    table=["London", "Dublin"]
-    if name in table:
+    # Handle the (few) special cases where names may be confusing.
+    # There are certain names which are the names of minor cities and towns (usually written as "Name, XX") and also important cities which are written just "Name"
+    # E.g., "London, ON" and "London" or "Dublin, OH" and "Dublin"
+    # When the name appears without state (or whatever -- this is mostly a US & Canada problem) if it's in the list below, we assume it's a base form
+    # Note that we only add to this list when there is a *fannish* conflict.
+    basetable=["London", "Dublin"]
+    if name in basetable:
        return name
+
     # OK, try to find a base name
     if name in localeBaseForms.keys():
         return localeBaseForms[name]
     return name
 
+# The current algorithm messes up multi-word city names and only catches the last word.
+# Correct the ones we know of to the full name.
+multiWordCities={
+    "Angeles, CA": "Los",
+    "Antonio, TX": "San",
+    "Beach, CA": "Long",
+    "Beach, FL": "West Palm",
+    "Bend, IN": "South",
+    "Brook, LI": "Stony",
+    "Brook, NY": "Stony",
+    "Carrollton, MD": "New",
+    "Christi, TX": "Corpus",
+    "City, IA": "Iowa",
+    "City, MO": "Kansas",
+    "City, OK": "Oklahoma",
+    "Collins, CO": "Fort",
+    "Creek, MI": "Battle",
+    "Diego, CA": "San",
+    "Francisco, CA": "San",
+    "Heights, NJ": "Hasbrouk",
+    "Hill, NJ": "Cherry",
+    "Island, NY": "Long",
+    "Jose, CA": "San",
+    "Juan, PR": "San",
+    "Lake, OH": "Indian",
+    "Louis, MO": "St.",
+    "Luzerne, NY": "Lake",
+    "Mateo, CA": "San",
+    "Moines, IA": "Des",
+    "Mountain, GA": "Pine",
+    "Orleans, LA": "New",
+    "Paso, TX": "El",
+    "Paul, MN": "St.",
+    "Petersburg, FL": "St.",
+    "Rosa, CA": "Santa",
+    "Spring, MD": "Silver",
+    "Springs, CO": "Colorado",
+    "Springs, NY": "Saratoga",
+    "Station, TX": "College",
+    "Town, NY": "Rye",
+    "York, NY": "New"
+}
 
 # Look for a pattern of the form:
 #   Word, XX
 #   where Word is a string of letters with an initial capital, the comma is optional, and XX is a pair of upper case letters
 # Note that this will also pick up roman-numeraled con names, E.g., Fantasycon XI, so we need to remove these later
-def ScanForLocales(locales: Set[str], s: str) -> Optional[Set[str]]:
-    pattern="in (?:[A-Za-z]* )?\[*([A-Z][a-z]+\]*,?\\s+\[*[A-Z]{2})\]*[^a-zA-Z]"
-            # (?:[A-Za-z]* )?   lets us ignore the "Oklahoma" of in Oklahoma City, OK)
-            # \[*  and  \]*     Lets us ignore [[brackets]]
-            # The "[^a-zA-Z]"   prohibits another letter immediately following the putative 2-UC state
+def ScanForLocales(s: str) -> Optional[Set[str]]:
 
-    # We test for characters on either side of the name, so make sure there are some... #TODO handle this more cleanly
-    lst=re.findall(pattern, " "+s+" ")
-    impossiblestates={"SF", "MC", "PR", "II", "IV", "VI", "IX", "XI", "XX", "VL", "XL", "LI", "LV", "LX"}       # PR: Progress Report; others Roman numerals
-    skippers={"Astra", "Con"}       # Second word of multi-word con names
-    out=set()
-    for l in lst:
-        l=l.replace("[", "")    # We only need to remove the [ because only a [ can be inside the capture group
-        splt=SplitOnSpan(",\s", l)
-        if len(splt) == 2:
-            if splt[0] not in skippers and splt[1] not in impossiblestates:
-                out.add(l)
-        else:
-            Log("...Split does not find two values: "+l)
+    # Find the first locale
+    # Detect locales of the form Name [Name..Name], XX  -- One or more capitalized words followed by an optional comma followed by exactly two UC characters
+    # ([A-Z][a-z]+\]*,?\s)+     Picks up one or more leading capitalized, space (or comma)-separated words
+    # \[*  and  \]*             Lets us ignore spans of [[brackets]]
+    # The "[^a-zA-Z]"           Prohibits another letter immediately following the putative 2-UC state
+    m=re.search("in \[*([A-Z][a-z]+\]*,?\s)+(\[*[A-Z]{2})\]*[^a-zA-Z]", " "+s+" ")    # The extra spaces are so that there is at least one character before and after a possible locale
+    if m is not None and len(m.groups()) > 1:
+        city=m.groups()[0]
+        state=m.groups()[1]
+        city=city.replace("[", " ").replace("]", " ")     # Get rid of brackets
+        city=city.replace(",", " ")                         # Get rid of commas
+        city=re.sub("\s+", " ", city).strip()               # Multiple spaces go to single space and trim the result
+        state=state.replace("[", "").replace("]", "").strip()
 
-    # That didn't work. Let's try country names that are spelled out.
+        impossiblestates = {"SF", "MC", "PR", "II", "IV", "VI", "IX", "XI", "XX", "VL", "XL", "LI", "LV", "LX"}  # PR: Progress Report; others Roman numerals
+        if state not in impossiblestates:
+            # City should consist of one or more space-separated capitalized tokens. Split them into a list
+            city=city.split()
+            if len(city) > 0:
+                skippers = {"Astra", "Con"}  # Second word of multi-word con names
+                if city[-1] not in skippers:
+                    # OK, now we know we have at least the form "in Xxxx[,] XX", but there may be many capitalized words before the Xxxx.
+                    # If not -- if we have *exactly* "in Xxxx[,] XX" -- then we have a local (as best we can tell).  Return it.
+                    loc = city[-1]+", "+state
+                    if len(city) == 1:
+                        return set([loc])
+                    # Apparently we have more than one leading word.  Check the last word+state against the multiWordCities dictionary.
+                    # If the multi-word city is found, we're good.
+                    if loc in multiWordCities.keys():
+                        # Check the preceeding token int he name against the token in multiWordCities
+                        token=multiWordCities[loc]
+                        if token == city[-2]:
+                            return set([city[-1]+" "+loc])
+    # OK, we can't find the Xxxx, XX pattern
+    # Look for city+spelled-out country
     # We'll look for a country name preceded by a Capitalized word
-    countries=["Australia", "New Zealand", "Canada", "Holland", "Netherlands", "Italy", "Gemany", "Norway", "Sweden", "Finland", "China", "Japan", "France", "Belgium",
+    countries=["Australia", "New Zealand", "Canada", "Holland", "Netherlands", "Italy", "Germany", "Norway", "Sweden", "Finland", "China", "Japan", "France", "Belgium",
                "Poland", "Bulgaria", "Israel", "Russia", "Scotland", "Wales", "England", "Ireland"]
+    out: Set[str]=set()
     for country in countries:
         if country in s:
             loc=s.find(country)
@@ -161,7 +225,7 @@ def ScanForLocales(locales: Set[str], s: str) -> Optional[Set[str]]:
 
     # Look for the pattern "in [[City Name]]"
     # This has the fault that it can find something like "....in [[John Campbell]]'s report" and think that "John Campbell" is a locale.
-    # Fortunately, this will nearly always happen *after* the first sentence which contains the actual locale, so we can ignore second and later
+    # Fortunately, this will nearly always happen *after* the first sentence which contains the actual locale, and we ignore second and later hits
     pattern="in \[\[((?:[A-Z][A-Za-z]+[\.,]?\s*)+)\]\]"
             # Capture "in" followed by "[[" followed by a group
             # The group is a possibly repeated non-capturing group
@@ -392,6 +456,7 @@ for page in fancyPagesDictByWikiname.values():
                         # [[xxx|yyy]] zzz
                     # But! There can be more than one name on a date if a con converted from real to virtual while changing its name and keeping its dates:
                     # E.g., <s>[[FilKONtario 30]]</s> [[FilKONtari-NO]] (trailing stuff)
+                    # Whatcon 20: This Year's Theme -- need to split on the colon
                     # Each of the bracketed chunks can be of one of the four forms, above. (Ugh.)
 
                     # [name1, trailing text, cancelled), (name2, trailing text, cancelled)]
@@ -538,14 +603,14 @@ with open("Con location discrepancies.txt", "w+", encoding='utf-8') as f:
     for page in fancyPagesDictByWikiname.values():
         # If it's an individual convention page, we search through its text for something that looks like a placename.
         if "Convention" in page.Tags and "Conseries" not in page.Tags:
-            m=ScanForLocales(locales, page.Source)
-            if m is not None:
+            m=ScanForLocales(page.Source)
+            if len(m) > 0:
                 for place in m:
                     place=WikiExtractLink(place)
                     # Find the convention in the conventions dictionary and add the location if appropriate.
                     conname=CanonicalName(page.Name)
-                    cons=[x for x in conventions if x.Link == conname]
-                    for con in cons:
+                    listcons=[x for x in conventions if x.NameInSeriesList == conname]
+                    for con in listcons:
                         if not LocMatch(place, con.Loc):
                             if con.Loc == "":   # If there previously was no location from the con series page, substitute what we found in the con instance page
                                 con.Loc=place
@@ -559,49 +624,6 @@ with open("Con DateRange oddities.txt", "w+", encoding='utf-8') as f:
     for con in oddities:
         f.write(str(con)+"\n")
 conventions.sort(key=lambda d: d.DateRange)
-
-# The current algorithm messes up multi-word city names and only catches the last word.
-# Correct the ones we know of to the full name.
-corrections={
-    "Angeles, CA": "Los Angeles, CA",
-    "Antonio, TX": "San Antonio, TX",
-    "Beach, CA": "Long Beach, CA",
-    "Beach, FL": "West Palm Beaach, FL",
-    "Bend, IN": "South Bend, IN",
-    "Brook, LI": "Stony Brook, NY",
-    "Brook, NY": "Stony Brook, NY",
-    "Carrollton, MD": "New Carrollton, MD",
-    "City, IA": "Iowa City, IA",
-    "City, MO": "Kansas City, MO",
-    "City, OK": "Oklahoma City, OK",
-    "Collins, CO": "Fort Collins, CO",
-    "Creek, MI": "Battle Creek, MI",
-    "Diego, CA": "San Diego, CA",
-    "Hill, NJ": "Cherry Hill, NJ",
-    "Island, NY": "Long Island, NY",
-    "Juan, PR": "San Juan, PR",
-    "Lake, OH": "Indian Lake, OH",
-    "Louis, MO": "St. Louis, MO",
-    "Luzerne, NY": "Lake Luzerne, NY",
-    "Mateo, CA": "San Mateo, CA",
-    "Moines, IA": "Des Moines, IA",
-    "Orleans, LA": "New Orleans, LA",
-    "Paso, TX": "El Paso, TX",
-    "Paul, MN": "St. Paul, MN",
-    "Petersburg, FL": "St. Petersburg, FL",
-    "Rosa, CA": "Santa Rosa, CA",
-    "Spring, MD": "Silver Spring, MD",
-    "Springs, CO": "Colorado Springs, CO",
-    "Springs, NY": "Saratoga Springs, NY",
-    "Station, TX": "College Station, TX",
-    "Town, NY": "Rye Town, NY",
-    "York, NY": "New York, NY"
-}
-
-# Correct convention names
-for con in conventions:
-    if con.Loc in corrections.keys():
-        con.Loc=corrections[con.Loc]
 
 #TODO: Add a list of keywords to find and remove.  E.g. "Astra RR" ("Ad Astra XI")
 
