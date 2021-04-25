@@ -197,8 +197,8 @@ multiWordCities={
 }
 
 # Look for a pattern of the form:
-#   Word, XX
-#   where Word is a string of letters with an initial capital, the comma is optional, and XX is a pair of upper case letters
+#   in Word, XX
+#   where Word is one or more strings of letters each with an initial capital, the comma is optional, and XX is a pair of upper case letters
 # Note that this will also pick up roman-numeraled con names, E.g., Fantasycon XI, so we need to remove these later
 def ScanForLocales(s: str) -> Optional[Set[str]]:
 
@@ -246,20 +246,28 @@ def ScanForLocales(s: str) -> Optional[Set[str]]:
 
 
     # OK, we can't find the Xxxx, XX pattern
-    # Look for city+spelled-out country
-    # We'll look for a country name preceded by a Capitalized word
+    # Look for 'in'+city+[,]+spelled-out country
+    # We'll look for a country name preceded by the word 'in' and one or two Capitalized words
     countries=["Australia", "New Zealand", "Canada", "Holland", "Netherlands", "Italy", "Germany", "Norway", "Sweden", "Finland", "China", "Japan", "France", "Belgium",
                "Poland", "Bulgaria", "Israel", "Russia", "Scotland", "Wales", "England", "Ireland"]
     out: Set[str]=set()
+    splt = SplitOnSpan(",\s\[\]", s)  # Split on spans of "," and space
     for country in countries:
-        if country in s:
-            loc=s.find(country)
-            splt=SplitOnSpan(",\s\[\]", s[:loc]) # Split on spans of "," and space
-            if len(splt) > 1:
-                if splt[-2:-1][0] == "in":  # 2nd last token is "in"
-                    name=splt[-1:][0]
-                    if re.match("[A-Z]{1}[a-z]+$", name):
-                        out.add(name+", "+country)
+        try:
+            loc=splt.index(country)
+            if loc > 2:     # Minimum is 'in City, Country'
+                locale=country
+                sep=", "
+                for i in range(1,6):    # City can be up to five tokens
+                    if loc-i < 0:
+                        break
+                    if re.match("^[A-Z]{1}[a-z]+$", splt[loc-i]):   # Look for Xxxxx
+                        locale=splt[loc-i]+sep+locale
+                    if splt[loc-i-1] == "in":
+                        return {locale}
+                    sep=" "
+        except ValueError as e:
+            continue
 
     # Look for the pattern "in [[City Name]]"
     # This has the fault that it can find something like "....in [[John Campbell]]'s report" and think that "John Campbell" is a locale.
@@ -659,8 +667,18 @@ with open("Con location discrepancies.txt", "w+", encoding='utf-8') as f:
                                 continue
                             f.write(conname+": Location mismatch: '"+place+"' != '"+con.Loc+"'\n")
 
+# Normalize convention locations to the standard City, ST form.
+Log("***Normalizing con locations")
+for con in conventions:
+    loc=ScanForLocales(con.Loc)
+    if len(loc) > 1:
+        Log("  In "+con.NameInSeriesList+"  found more than one location: "+str(loc))
+    if len(loc) > 0:
+        con.Loc=iter(loc).__next__()    # Nasty code to get one element from set
+
 
 # Sort the con dictionary  into date order
+Log("Writing Con DateRange oddities.txt")
 oddities=[x for x in conventions if x.DateRange.IsOdd()]
 with open("Con DateRange oddities.txt", "w+", encoding='utf-8') as f:
     for con in oddities:
