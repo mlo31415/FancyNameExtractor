@@ -219,7 +219,7 @@ def ScanForLocales(s: str) -> Optional[Set[str]]:
         state=groups[-1]
         state=state.replace("[", "").replace("]", "").strip()
 
-        impossiblestates = {"SF", "MC", "PR", "II", "IV", "VI", "IX", "XI", "XX", "VL", "XL", "LI", "LV", "LX"}  # PR: Progress Report; others Roman numerals
+        impossiblestates = {"SF", "MC", "PR", "II", "IV", "VI", "IX", "XI", "XX", "VL", "XL", "LV", "LX"}  # PR: Progress Report; others Roman numerals; "LI" is allowed because of Long Island
         if state not in impossiblestates:
             # City should consist of one or more space-separated capitalized tokens. Split them into a list
             if len(city) > 0:
