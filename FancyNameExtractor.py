@@ -155,6 +155,7 @@ multiWordCities={
     "Falls, NY": "Niagara",
     "Francisco, CA": "San",
     "Grande, AZ": "Casa",
+    "Green, KY": "Bowling",
     "Guardia, NY": "La",
     "Harbor, NH": "Center",
     "Heights, IL": "Arlington",
