@@ -109,7 +109,7 @@ for locale in locales:
         if city not in localeBaseForms.keys():
             localeBaseForms[city]=city+", "+state
 
-# Fond the base form of a locale.  E.g., the base form of "Cambridge, MA" is "Boston, MA".
+# Find the base form of a locale.  E.g., the base form of "Cambridge, MA" is "Boston, MA".
 def BaseFormOfLocaleName(localeBaseForms: Dict[str, str], name: str) -> str:
     # Handle the (few) special cases where names may be confusing.
     # There are certain names which are the names of minor cities and towns (usually written as "Name, XX") and also important cities which are written just "Name"
@@ -208,17 +208,16 @@ def ScanForLocales(s: str) -> Optional[Set[str]]:
     # ([A-Z][a-z]+\]*,?\s)+     Picks up one or more leading capitalized, space (or comma)-separated words
     # \[*  and  \]*             Lets us ignore spans of [[brackets]]
     # The "[^a-zA-Z]"           Prohibits another letter immediately following the putative 2-UC state
-    m=re.search("in \[*([A-Z][a-z]+\s+)?([A-Z][a-z]+\s+)?([A-Z][a-z]+,?\s+)\]*\[*([A-Z]{2})\]*[^a-zA-Z]", " "+s+" ")    # The extra spaces are so that there is at least one character before and after a possible locale
+    s1=s.replace("[", "").replace("]", "")   # Remove brackets
+    m=re.search("in ([A-Z][a-z]+\s+)?([A-Z][a-z]+\s+)?([A-Z][a-z]+,?\s+)([A-Z]{2})[^a-zA-Z]", " "+s1+" ")    # The extra spaces are so that there is at least one character before and after a possible locale
     if m is not None and len(m.groups()) > 1:
         groups=[x for x in m.groups() if x is not None]
         city=" ".join(groups[0:-1])
-        city=city.replace("[", " ").replace("]", " ")     # Get rid of brackets
         city=city.replace(",", " ")                         # Get rid of commas
         city=re.sub("\s+", " ", city).strip()               # Multiple spaces go to single space and trim the result
         city=city.split()
 
-        state=groups[-1]
-        state=state.replace("[", "").replace("]", "").strip()
+        state=groups[-1].strip()
 
         impossiblestates = {"SF", "MC", "PR", "II", "IV", "VI", "IX", "XI", "XX", "VL", "XL", "LV", "LX"}  # PR: Progress Report; others Roman numerals; "LI" is allowed because of Long Island
         if state not in impossiblestates:
@@ -252,7 +251,8 @@ def ScanForLocales(s: str) -> Optional[Set[str]]:
     countries=["Australia", "New Zealand", "Canada", "Holland", "Netherlands", "Italy", "Germany", "Norway", "Sweden", "Finland", "China", "Japan", "France", "Belgium",
                "Poland", "Bulgaria", "Israel", "Russia", "Scotland", "Wales", "England", "Ireland"]
     out: Set[str]=set()
-    splt = SplitOnSpan(",\s\[\]", s)  # Split on spans of "," and space
+    s1=s.replace("[", "").replace("]", "")   # Remove brackets
+    splt = SplitOnSpan(",.\s", s1)  # Split on spans of comma, period, and space
     for country in countries:
         try:
             loc=splt.index(country)
@@ -273,12 +273,12 @@ def ScanForLocales(s: str) -> Optional[Set[str]]:
     # Look for the pattern "in [[City Name]]"
     # This has the fault that it can find something like "....in [[John Campbell]]'s report" and think that "John Campbell" is a locale.
     # Fortunately, this will nearly always happen *after* the first sentence which contains the actual locale, and we ignore second and later hits
-    pattern="in \[\[((?:[A-Z][A-Za-z]+[\.,]?\s*)+)\]\]"
-            # Capture "in" followed by "[[" followed by a group
-            # The group is a possibly repeated non-capturing group
-            #       which is a UC letter followed by one or more letters followed by an optional period or comma followed by zero or more spaces
-            # ending with "]]"
-    lst=re.findall(pattern, s)
+        # Pattern:
+        # Capture "in" followed by "[[" followed by a group
+        # The group is a possibly repeated non-capturing group
+        #       which is a UC letter followed by one or more letters followed by an optional period or comma followed by zero or more spaces
+        # ending with "]]"
+    lst=re.findall("in \[\[((?:[A-Z][A-Za-z]+[\.,]?\s*)+)\]\]", s)
     if len(lst) > 0:
         out.add(BaseFormOfLocaleName(localeBaseForms, lst[0]))
     return out
@@ -632,10 +632,8 @@ for page in fancyPagesDictByWikiname.values():
 # Compare two locations to see if they match
 def LocMatch(loc1: str, loc2: str) -> bool:
     # First, remove '[[' and ']]' from both locs
-    loc1=loc1.replace("[[", "")
-    loc1=loc1.replace("]]", "")
-    loc2=loc2.replace("[[", "")
-    loc2=loc2.replace("]]", "")
+    loc1=loc1.replace("[[", "").replace("]]", "")
+    loc2=loc2.replace("[[", "").replace("]]", "")
 
     # We want 'Glasgow, UK' to match 'Glasgow', so deal with that specific pattern
     m=re.match("^/s*(.*), [A-Z]{2}\s*$", loc1)
