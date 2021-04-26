@@ -290,7 +290,7 @@ class ConInfo:
     def __init__(self, Link: str="", Text: str="", Loc: str="", DateRange: FanzineDateRange=FanzineDateRange(), Virtual: bool=False, Cancelled: bool=False):
         self.Link: str=Link  # The actual text of the link on the series page
         self.NameInSeriesList: str=Text  # The displayed text for that link on the series page
-        self.Loc: str=Loc
+        self.Loc=Loc
         self.DateRange: FanzineDateRange=DateRange
         self.Virtual: bool=Virtual
         self.Cancelled: bool=Cancelled
@@ -306,6 +306,14 @@ class ConInfo:
     @property
     def CannonicalName(self) -> str:
         return CanonicalName(self.Link)
+
+    @property
+    def Loc(self) -> str:
+        return self._loc
+    @Loc.setter
+    def Loc(self, val: str):
+        # We don't want any links in this
+        self._loc=WikiExtractLink(val)
 
 
 Log("***Analyzing convention series tables")
