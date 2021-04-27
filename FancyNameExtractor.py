@@ -520,7 +520,7 @@ for page in fancyPagesDictByWikiname.values():
                     # Whatcon 20: This Year's Theme -- need to split on the colon
                     # Each of the bracketed chunks can be of one of the four forms, above. (Ugh.)
 
-                    class Con:
+                    class ConName:
                         def __init__(self, Name: str="", Link: str="", Cancelled: bool=False):
                             self.Name: str=Name
                             self.Cancelled: bool=Cancelled
@@ -547,7 +547,7 @@ for page in fancyPagesDictByWikiname.values():
                         return "", constr
 
                     # We assume that the cancelled con names lead the uncancelled ones
-                    def NibbleCon(constr: str) -> Tuple[Optional[Con], str]:
+                    def NibbleCon(constr: str) -> Tuple[Optional[ConName], str]:
                         constr=constr.strip()
                         if len(constr) == 0:
                             return None, constr
@@ -560,7 +560,7 @@ for page in fancyPagesDictByWikiname.values():
                             s=m.groups()[0]
                             constr=re.sub(pat, "", constr).strip()  # Remove the matched part and trim whitespace
                             l, t=SplitConText(s)
-                            con=Con(Name=t, Link=l, Cancelled=True)
+                            con=ConName(Name=t, Link=l, Cancelled=True)
                             return con, constr
 
                         # OK, there are no <s>...</s> con names left.  So what is left might be [[name]] or [[link|name]]
@@ -570,7 +570,7 @@ for page in fancyPagesDictByWikiname.values():
                             s=m.groups()[0]
                             constr=re.sub(pat, "", constr).strip()  # Remove the matched part and trim whitespace
                             l, t=SplitConText(s)
-                            con=Con(Name=t, Link=l, Cancelled=False)
+                            con=ConName(Name=t, Link=l, Cancelled=False)
                             return con, constr
 
 #TODO:  What's left may be a bare con name or it may be a keyword like "held online" or "virtual".  Need to check this on real data
@@ -579,10 +579,10 @@ for page in fancyPagesDictByWikiname.values():
                                 return None, ""
                             if ":" in constr:
                                 constr=constr.split(":")[0]
-                            con=Con(Name=constr)
+                            con=ConName(Name=constr)
                             return con, ""
 
-                    cons: List[Con]=[]
+                    cons: List[ConName]=[]
                     while len(context) > 0:
                         con, context=NibbleCon(context)
                         if con is None:
