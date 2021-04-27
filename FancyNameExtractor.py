@@ -504,8 +504,6 @@ for page in fancyPagesDictByWikiname.values():
                     # In some pages we italicize or bold the con's name, so remove spans of single quotes 2 or longer
                     context=re.sub("[']{2,}", "", context)
 
-                    #Check to see if there's a virtual tag along with the convention name
-                    virtual, context = ScanForVirtual(context)
                     context=context.strip()
 
                     if context.count("@@") != context.count("%%"):
