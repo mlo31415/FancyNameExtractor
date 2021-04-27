@@ -131,6 +131,7 @@ def BaseFormOfLocaleName(localeBaseForms: Dict[str, str], name: str) -> str:
 multiWordCities={
     "Angeles, CA": "Los",
     "Antonio, TX": "San",
+    "Barbara, CA": "Santa",
     "Beach, CA": ["Long", "Huntington"],
     "Beach, FL": ["West Palm", "Cocoa", "Palm"],
     "Bend, IN": "South",
