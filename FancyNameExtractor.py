@@ -535,12 +535,6 @@ for page in fancyPagesDictByWikiname.values():
                                 val=None
                             self._link=val
 
-                    # Definitions:
-                    #   l1 -- first link
-                    #   t1 -- first text for that link
-                    #   c1 -- was it cancelled?
-                    #   ...and similarly for 2
-
                     def SplitConText(constr: str) -> Tuple[str, str]:
                         # Now convert all link|text to separate link and text
                         # Do this for s1 and s2
