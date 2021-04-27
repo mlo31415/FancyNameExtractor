@@ -410,6 +410,15 @@ for page in fancyPagesDictByWikiname.values():
                             loc=WikiExtractLink(row[locColumn])
                             conlocation=BaseFormOfLocaleName(localeBaseForms, loc)
 
+                    # Check the row for (virtual) in any form. If found, set the virtual flag and remove the text from the line
+                    virtual=False
+                    for index, col in enumerate(row):
+                        v2, col=ScanForVirtual(col)
+                        if v2:
+                            row[index]=col      # Update row with the virtual flag removed
+                        virtual=virtual or v2
+                    Log("Virtual="+str(virtual))
+
                     # Decode the convention and date columns add the resulting convention(s) to the list
                     # This is really complicated since there are (too) many cases and many flavors to the cases.  The cases:
                     #   name1 || date1          (1 con: normal)
@@ -436,12 +445,6 @@ for page in fancyPagesDictByWikiname.values():
                     # For the dates column, we want to remove the virtual designation as it will just confuse later processing.
                     # We want to handle the case where (virtual) is in parens, but also when it isn't.
                     # We need two patterns here because Python's regex doesn't have balancing groups and we don't want to match unbalanced parens
-
-                    virtual, datetext=ScanForVirtual(datetext)
-                    for col in row:
-                        v2, _=ScanForVirtual(col)
-                        virtual=virtual or v2
-                    Log("Virtual="+str(virtual))
 
                     # Ignore anything in trailing parenthesis. (e.g, "(Easter weekend)", "(Memorial Day)")
                     p=re.compile("\(.*\)\s?$")  # Note that this is greedy. Is that the correct things to do?
@@ -500,6 +503,9 @@ for page in fancyPagesDictByWikiname.values():
                     context=context.replace("&nbsp;", " ").replace("&#8209;", "-")
                     # In some pages we italicize or bold the con's name, so remove spans of single quotes 2 or longer
                     context=re.sub("[']{2,}", "", context)
+
+                    #Check to see if there's a virtual tag along with the convention name
+                    virtual, context = ScanForVirtual(context)
                     context=context.strip()
 
                     if context.count("@@") != context.count("%%"):
