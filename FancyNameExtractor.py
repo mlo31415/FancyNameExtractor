@@ -587,6 +587,10 @@ for page in fancyPagesDictByWikiname.values():
 
                     cons: List[Union[ConName, List[ConName]]]=[]
                     # Do we have "/" in the con name that is not part of a </s>? If so, we have alternate names, not separate cons
+                    def replacer(matchObject) -> str:
+                        if matchObject.group(1) is not None:
+                            return matchObject.group(1)+" / "
+                    context=re.sub("([^<])/", replacer, context)
                     contextlist=re.split("[^<]/", context)
                     if len(contextlist) > 0:
                         contextlist=[x.strip() for x in contextlist if len(x.strip()) > 0]
