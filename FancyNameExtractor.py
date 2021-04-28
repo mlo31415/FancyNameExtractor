@@ -567,7 +567,7 @@ for page in fancyPagesDictByWikiname.values():
                             return con, constr
 
                         # OK, there are no <s>...</s> con names left.  So what is left might be [[name]] or [[link|name]]
-                        pat="^@@(.*?)%%"
+                        pat="^(@@(:?.*?)%%)"
                         m=re.match(pat, constr)
                         if m is not None:
                             s=m.groups()[0]
@@ -624,9 +624,8 @@ for page in fancyPagesDictByWikiname.values():
                             if len(hits[0].Loc) == 0:
                                 hits[0].Loc=ci.Loc
 
-                    # The first case we need to look at it whether cons[0] has a type of list or ConInfo
-                    # In the former case, we have one con with multiple names
-
+                    # The first case we need to look at it whether cons[0] has a type of list of ConInfo
+                    # This is one con with multiple names
                     if type(cons[0]) is list:
                         # By definition there is only one element. Extract it.  There may be more than one date.
                         assert len(cons) == 1 and len(cons[0]) > 0
