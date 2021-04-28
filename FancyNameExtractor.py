@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Dict, Set, Tuple, List
+from typing import Optional, Dict, Set, Tuple, List, Union
 
 import os
 import re
@@ -521,6 +521,9 @@ for page in fancyPagesDictByWikiname.values():
                     # E.g., <s>[[FilKONtario 30]]</s> [[FilKONtari-NO]] (trailing stuff)
                     # Whatcon 20: This Year's Theme -- need to split on the colon
                     # Each of the bracketed chunks can be of one of the four forms, above. (Ugh.)
+                    # But! con names can also be of the form name1 / name2 / name 3
+                    #   These are three (or two) different names for the same con.
+                    # We will assume that there is only limited mixing of these forms!
 
                     class ConName:
                         def __init__(self, Name: str="", Link: str="", Cancelled: bool=False):
@@ -584,12 +587,24 @@ for page in fancyPagesDictByWikiname.values():
                             con=ConName(Name=constr)
                             return con, ""
 
-                    cons: List[ConName]=[]
-                    while len(context) > 0:
-                        con, context=NibbleCon(context)
-                        if con is None:
-                            break
-                        cons.append(con)
+                    cons: List[Union[ConName, List[ConName]]]=[]
+                    # Do we have "/" in the con name that is not part of a </s>? If so, we have alternate names, not separate cons
+                    contextlist=re.split("[^<]/", context)
+                    if len(contextlist) > 0:
+                        contextlist=[x.strip() for x in contextlist if len(x.strip()) > 0]
+                        alts: List[ConName]=[]
+                        for con in contextlist:
+                            c, _=NibbleCon(con)
+                            if c is not None:
+                                alts.append(c)
+                        cons.append(alts)
+                    else:
+                        # Ok, we have one or more names and they are for different cons
+                        while len(context) > 0:
+                            con, context=NibbleCon(context)
+                            if con is None:
+                                break
+                            cons.append(con)
 
                     # Now we have cons and dates and need to create the appropriate convention entries.
                     if len(cons) == 0 or len(dates) == 0:
@@ -607,7 +622,23 @@ for page in fancyPagesDictByWikiname.values():
                             if len(hits[0].Loc) == 0:
                                 hits[0].Loc=ci.Loc
 
-                    if len(cons) == len(dates):
+                    # The first case we need to look at it whether cons[0] has a type of list or ConInfo
+                    # In the former case, we have one con with multiple names
+
+                    if type(cons[0]) is list:
+                        # By definition there is only one element. Extract it.  There may be more than one date.
+                        assert len(cons) == 1 and len(cons[0]) > 0
+                        cons=cons[0]
+                        for co in cons:
+                            for dt in dates:
+                                cancelled=co.Cancelled or dt.Cancelled
+                                dt.Cancelled = False
+                                v=False if cancelled else virtual
+                                ci=ConInfo(Link=co.Link, Text=co.Name, Loc=conlocation, DateRange=dt, Virtual=v, Cancelled=cancelled)
+                                AppendCon(ci)
+                                Log("#append: "+str(ci))
+                    # OK, in all the other cases cons is a list[ConInfo]
+                    elif len(cons) == len(dates):
                         # Add each con with the corresponding date
                         for i in range(len(cons)):
                             cancelled=cons[i].Cancelled or dates[i].Cancelled
