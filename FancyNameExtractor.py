@@ -655,7 +655,7 @@ for page in fancyPagesDictByWikiname.values():
                             cancelled=co.Cancelled or dates[0].Cancelled
                             dates[0].Cancelled = False
                             v=False if cancelled else virtual
-                            ci=ConInfo(Link=co.Link, Text=cons[i].Name, Loc=conlocation, DateRange=dates[0], Virtual=v, Cancelled=cancelled)
+                            ci=ConInfo(Link=co.Link, Text=co.Name, Loc=conlocation, DateRange=dates[0], Virtual=v, Cancelled=cancelled)
                             AppendCon(ci)
                             Log("#append: "+str(ci))
                     elif len(cons) == 1 and len(dates) > 1:
