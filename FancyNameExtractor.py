@@ -502,6 +502,8 @@ for page in fancyPagesDictByWikiname.values():
                     context=context.replace("[[", "@@").replace("]]", "%%")  # The square brackets are Regex special characters. This substitution makes the patterns simpler to read
                     # Convert the HTML characters some people have inserted into their ascii equivalents
                     context=context.replace("&nbsp;", " ").replace("&#8209;", "-")
+                    # And get rid of hard line breaks
+                    context=context.replace("<br>", " ")
                     # In some pages we italicize or bold the con's name, so remove spans of single quotes 2 or longer
                     context=re.sub("[']{2,}", "", context)
 
