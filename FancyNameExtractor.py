@@ -593,12 +593,16 @@ for page in fancyPagesDictByWikiname.values():
                             return con, ""
 
                     cons: List[Union[ConName, List[ConName]]]=[]
-                    # Do we have "/" in the con name that is not part of a </s>? If so, we have alternate names, not separate cons
-                    def replacer(matchObject) -> str:
-                        if matchObject.group(1) is not None:
-                            return matchObject.group(1)+" / "
-                    context=re.sub("([^<])/", replacer, context)
-                    contextlist=re.split("[^<]/", context)
+                    # Do we have "/" in the con name that is not part of a </s> and not part of a fraction? If so, we have alternate names, not separate cons
+                    # The strategy here is to recognize the '/' which are *not* con name separators and turn them into '&&&', then split on the remaining '/' and restore the real ones
+                    def replacer(matchObject) -> str:   # This generates the replacement text when used in a re.sub() call
+                        if matchObject.group(1) is not None and matchObject.group(2) is not None:
+                            return matchObject.group(1)+"&&&"+matchObject.group(2)
+                    context=re.sub("(<)/([A-Za-z])", replacer, context)  # Hide the '/' in things like </xxx>
+                    context=re.sub("([0-9])/([0-9])", replacer, context)    # Hide the '/' in fractions
+                    contextlist=re.split("/", context)
+                    contextlist=[x.replace("&&&", "/").strip() for x in contextlist]    # Restore the real '/'s
+                    context=context.replace("&&&", "/").strip()
                     if len(contextlist) > 1:
                         contextlist=[x.strip() for x in contextlist if len(x.strip()) > 0]
                         alts: List[ConName]=[]
