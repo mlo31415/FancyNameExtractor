@@ -297,6 +297,7 @@ class ConInfo:
         self.DateRange: FanzineDateRange=DateRange
         self.Virtual: bool=Virtual
         self.Cancelled: bool=Cancelled
+        self.Override: str=""
 
     def __str__(self) -> str:
         s="Link: "+self.Link if self.Link is not None else "None"+"  Name="+self.NameInSeriesList+"  Date="+str(self.DateRange)+"  Location="+self.Loc
@@ -304,6 +305,8 @@ class ConInfo:
             s+=" cancelled=True"
         if self.Virtual:
             s+=" virtual=True"
+        if len(self.Override) > 0:
+            s+="  Override="+self.Override
         return s
 
     @property
