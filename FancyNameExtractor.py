@@ -300,7 +300,7 @@ class ConInfo:
         self.Override: str=""
 
     def __str__(self) -> str:
-        s="Link: "+self.Link if self.Link is not None else "None"+"  Name="+self.NameInSeriesList+"  Date="+str(self.DateRange)+"  Location="+self.Loc
+        s="Link: "+(self.Link if self.Link is not None else "None")+"  Name="+self.NameInSeriesList+"  Date="+str(self.DateRange)+"  Location="+self.Loc
         if self.Cancelled and not self.DateRange.Cancelled:     # Print this cancelled only if we have not already done so in the date range
             s+=" cancelled=True"
         if self.Virtual:
