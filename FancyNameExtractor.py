@@ -749,7 +749,6 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
     # The con name and location is crossed out when it was cancelled or moved and (virtual) is added when it was virtual
     f.write("<tab>\n")
     for con in conventions:
-        conname=con.Link
         # Look up the location for this convention
         conloctext=con.Loc
 
