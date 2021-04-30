@@ -169,6 +169,7 @@ multiWordCities={
     "Lac, WI": "Fond du",
     "Lake, OH": "Indian",
     "Lauderdale, FL": "Fort",
+    "Laurel, NJ": "Mt.",
     "Louis, MO": "St.",
     "Luzerne, NY": "Lake",
     "Mateo, CA": "San",
