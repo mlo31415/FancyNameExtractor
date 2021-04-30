@@ -619,7 +619,7 @@ for page in fancyPagesDictByWikiname.values():
 
                     # Don't add duplicate entries
                     def AppendCon(ci: ConInfo) -> None:
-                        hits=[x for x in conventions if ci.NameInSeriesList == x.NameInSeriesList and ci.DateRange == x.DateRange and ci.Cancelled == x.Cancelled and ci.Virtual == x.Virtual]
+                        hits=[x for x in conventions if ci.NameInSeriesList == x.NameInSeriesList and ci.DateRange == x.DateRange and ci.Cancelled == x.Cancelled and ci.Virtual == x.Virtual and ci.Override == x.Override]
                         if len(hits) == 0:
                             conventions.append(ci)
                         else:
