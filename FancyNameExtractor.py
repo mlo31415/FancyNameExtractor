@@ -596,7 +596,7 @@ for page in fancyPagesDictByWikiname.values():
                             return matchObject.group(1)+" / "
                     context=re.sub("([^<])/", replacer, context)
                     contextlist=re.split("[^<]/", context)
-                    if len(contextlist) > 0:
+                    if len(contextlist) > 1:
                         contextlist=[x.strip() for x in contextlist if len(x.strip()) > 0]
                         alts: List[ConName]=[]
                         for con in contextlist:
@@ -634,14 +634,23 @@ for page in fancyPagesDictByWikiname.values():
                         # By definition there is only one element. Extract it.  There may be more than one date.
                         assert len(cons) == 1 and len(cons[0]) > 0
                         cons=cons[0]
-                        for co in cons:
-                            for dt in dates:
-                                cancelled=co.Cancelled or dt.Cancelled
-                                dt.Cancelled = False
-                                v=False if cancelled else virtual
-                                ci=ConInfo(Link=co.Link, Text=co.Name, Loc=conlocation, DateRange=dt, Virtual=v, Cancelled=cancelled)
-                                AppendCon(ci)
-                                Log("#append: "+str(ci))
+                        for dt in dates:
+                            override=""
+                            cancelled=dt.Cancelled
+                            dt.Cancelled = False
+                            for co in cons:
+                                cancelled=cancelled or co.Cancelled
+                                if len(override) > 0:
+                                    override+=" / "
+                                override+="[["
+                                if co.Link is not None and len(co.Link) > 0:
+                                    override+=co.Link+"|"
+                                override+=co.Name+"]]"
+                            v = False if cancelled else virtual
+                            ci=ConInfo(Link="dummy", Text="dummy", Loc=conlocation, DateRange=dt, Virtual=v, Cancelled=cancelled)
+                            ci.Override=override
+                            AppendCon(ci)
+                            Log("#append 1: "+str(ci))
                     # OK, in all the other cases cons is a list[ConInfo]
                     elif len(cons) == len(dates):
                         # Add each con with the corresponding date
@@ -652,7 +661,7 @@ for page in fancyPagesDictByWikiname.values():
                             ci=ConInfo(Link=cons[i].Link, Text=cons[i].Name, Loc=conlocation, DateRange=dates[i], Virtual=v, Cancelled=cancelled)
                             if ci.DateRange.IsEmpty():
                                 Log("***"+ci.Link+"has an empty date range: "+str(ci.DateRange), isError=True)
-                            Log("#append: "+str(ci))
+                            Log("#append 2: "+str(ci))
                             AppendCon(ci)
                     elif len(cons) > 1 and len(dates) == 1:
                         # Multiple cons all with the same dates
@@ -662,7 +671,7 @@ for page in fancyPagesDictByWikiname.values():
                             v=False if cancelled else virtual
                             ci=ConInfo(Link=co.Link, Text=co.Name, Loc=conlocation, DateRange=dates[0], Virtual=v, Cancelled=cancelled)
                             AppendCon(ci)
-                            Log("#append: "+str(ci))
+                            Log("#append 3: "+str(ci))
                     elif len(cons) == 1 and len(dates) > 1:
                         for dt in dates:
                             cancelled=cons[0].Cancelled or dt.Cancelled
@@ -670,7 +679,7 @@ for page in fancyPagesDictByWikiname.values():
                             v=False if cancelled else virtual
                             ci=ConInfo(Link=cons[0].Link, Text=cons[0].Name, Loc=conlocation, DateRange=dt, Virtual=v, Cancelled=cancelled)
                             AppendCon(ci)
-                            Log("#append: "+str(ci))
+                            Log("#append 4: "+str(ci))
                     else:
                         Log("Can't happen! ncons="+str(len(cons))+"  len(dates)="+str(len(dates)), isError=True)
 
