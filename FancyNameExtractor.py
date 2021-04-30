@@ -754,7 +754,10 @@ with open("Convention timeline (Fancy).txt", "w+", encoding='utf-8') as f:
         conloctext=con.Loc
 
         # Format the convention name and location for tabular output
-        context="[["+str(con.NameInSeriesList)+"]]"
+        if len(con.Override) > 0:
+            context=con.Override
+        else:
+            context="[["+str(con.NameInSeriesList)+"]]"
         if con.Virtual:
             context="''"+context+" (virtual)''"
         else:
