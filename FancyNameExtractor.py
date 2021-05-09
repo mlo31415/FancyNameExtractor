@@ -537,6 +537,9 @@ for page in fancyPagesDictByWikiname.values():
                             self.Cancelled: bool=Cancelled
                             self.Link=Link
 
+                        def __lt__(self, val: ConName) -> bool:
+                            return self.Name < val.Name
+
                         @property
                         def Link(self) -> Optional[str]:
                             return self._link
@@ -611,6 +614,7 @@ for page in fancyPagesDictByWikiname.values():
                             c, _=NibbleCon(con)
                             if c is not None:
                                 alts.append(c)
+                        alts.sort()     # Sort the list so that when this list is created from two or more different convention idnex tables, it looks the same and dups can be removed.
                         cons.append(alts)
                     else:
                         # Ok, we have one or more names and they are for different cons
@@ -945,5 +949,4 @@ with open("Peoples names.txt", "w+", encoding='utf-8') as f:
     for name in peopleNames:
         f.write(name+"\n")
 i=0
-
 
