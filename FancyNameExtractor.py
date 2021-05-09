@@ -73,7 +73,7 @@ for pageFname in allFancy3PagesFnames:
                     Log("")
                 Log(str(l), noNewLine=True)
 
-Log("\n   "+str(len(fancyPagesDictByWikiname))+" semi-unique links found")
+Log("\n   "+str(len(fancyPagesDictByWikiname))+" semi-unique pages found")
 
 Log("Build the redirects table")
 g_canonicalNames={}
