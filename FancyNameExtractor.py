@@ -740,7 +740,7 @@ for con in conventions:
     if len(loc) > 1:
         Log("  In "+con.NameInSeriesList+"  found more than one location: "+str(loc))
     if len(loc) > 0:
-        con.Loc=iter(loc).__next__()    # Nasty code to get one element from set
+        con.Loc=iter(loc).__next__()    # Nasty code to get one element from the set
 
 
 # Sort the con dictionary  into date order
