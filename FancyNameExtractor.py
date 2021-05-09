@@ -255,8 +255,8 @@ def ScanForLocales(s: str) -> Optional[Set[str]]:
     # OK, we can't find the Xxxx, XX pattern
     # Look for 'in'+city+[,]+spelled-out country
     # We'll look for a country name preceded by the word 'in' and one or two Capitalized words
-    countries=["Australia", "New Zealand", "Canada", "Holland", "Netherlands", "Italy", "Germany", "Norway", "Sweden", "Finland", "China", "Japan", "France", "Belgium",
-               "Poland", "Bulgaria", "Israel", "Russia", "Scotland", "Wales", "England", "Ireland"]
+    countries=["Australia", "Belgium", "Bulgaria", "Canada", "China", "England", "Germany", "Holland", "Ireland", "Israel", "Italy", "New Zealand", "Netherlands", "Norway", "Sweden", "Finland", "Japan", "France",
+               "Poland", "Russia", "Scotland", "Wales"]
     out: Set[str]=set()
     s1=s.replace("[", "").replace("]", "")   # Remove brackets
     splt = SplitOnSpan(",.\s", s1)  # Split on spans of comma, period, and space
