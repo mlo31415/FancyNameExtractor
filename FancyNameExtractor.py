@@ -189,6 +189,7 @@ multiWordCities={
     "Plainfield, NJ": "South",
     "Plains, NY": "White",
     "Point, NC": "High",
+    "Rock, AR": ["Little", "North Little"],
     "Rosa, CA": "Santa",
     "Sacromento, CA": "West",
     "Sheen, UK": "East",
