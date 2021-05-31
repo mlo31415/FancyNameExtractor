@@ -107,8 +107,7 @@ for locale in locales:
     if m is not None:
         city=m.groups()[0]
         state=m.groups()[1]
-        if city not in localeBaseForms.keys():
-            localeBaseForms[city]=city+", "+state
+        localeBaseForms.setdefault(city, city+", "+state)
 
 # Find the base form of a locale.  E.g., the base form of "Cambridge, MA" is "Boston, MA".
 def BaseFormOfLocaleName(localeBaseForms: Dict[str, str], name: str) -> str:
@@ -821,11 +820,9 @@ inverseRedirects:Dict[str, List[str]]={}     # Key is the name of a destination 
 for fancyPage in fancyPagesDictByWikiname.values():
     if fancyPage.Redirect is not None:
         redirects[fancyPage.Name]=fancyPage.UltimateRedirect
-        if fancyPage.Redirect not in inverseRedirects.keys():
-            inverseRedirects[fancyPage.Redirect]=[]
+        inverseRedirects.setdefault(fancyPage.Redirect, [])
         inverseRedirects[fancyPage.Redirect].append(fancyPage.Name)
-        if fancyPage.UltimateRedirect not in inverseRedirects.keys():
-            inverseRedirects[fancyPage.UltimateRedirect]=[]
+        inverseRedirects.setdefault(fancyPage.UltimateRedirect, [])
         if fancyPage.UltimateRedirect != fancyPage.Redirect:
             inverseRedirects[fancyPage.UltimateRedirect].append(fancyPage.Name)
 
@@ -852,8 +849,7 @@ peopleReferences: Dict[str, List[str]]={}
 Log("***Creating dict of people references")
 for fancyPage in fancyPagesDictByWikiname.values():
     if fancyPage.IsPerson():
-        if fancyPage.Name not in peopleReferences.keys():
-            peopleReferences[fancyPage.Name]=[]
+        peopleReferences.setdefault(fancyPage.Name, [])
 
 # Now go through all outgoing references on the pages and add those which reference a person to that person's list
 for fancyPage in fancyPagesDictByWikiname.values():
