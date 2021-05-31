@@ -52,7 +52,7 @@ allFancy3PagesFnames = [cn for cn in allFancy3PagesFnames if not cn.endswith(".j
 #allFancy3PagesFnames= [f for f in allFancy3PagesFnames if f[0:6].lower() == "philco"]        # Just to cut down the number of pages for debugging purposes
 Log("   "+str(len(allFancy3PagesFnames))+" pages found")
 
-fancyPagesDictByWikiname={}     # Key is page's canname; Val is a FancyPage class containing all the references on the page
+fancyPagesDictByWikiname: Dict[str, F3Page]={}     # Key is page's canname; Val is a FancyPage class containing all the references on the page
 
 ignoredPagePrefixes=["Template;colon;", "Log 202"]
 ignoredPages=["Standards", "Admin"]
@@ -76,7 +76,7 @@ for pageFname in allFancy3PagesFnames:
 Log("\n   "+str(len(fancyPagesDictByWikiname))+" semi-unique pages found")
 
 Log("Build the redirects table")
-g_canonicalNames={}
+g_canonicalNames: Dict[str, str]={}
 for val in fancyPagesDictByWikiname.values():
     if val.IsRedirectpage:
         g_canonicalNames[val.Name]=val.Redirect
@@ -100,7 +100,7 @@ for page in fancyPagesDictByWikiname.values():
 # Convert names like "Chicago" to "Chicago, IL"
 # We look through the locales database for names that are proper extensions of the input name
 # First create the dictionary we'll need
-localeBaseForms={}  # It's defined as a dictionary with the value being the base form of the key
+localeBaseForms: Dict[str, str]={}  # It's defined as a dictionary with the value being the base form of the key
 for locale in locales:
     # Look for names of the form Name,ST
     m=re.match("^([A-Za-z .]*),\s([A-Z]{2})$", locale)
@@ -848,7 +848,7 @@ with open("Untagged locales.txt", "w+", encoding='utf-8') as f:
 # The key is a page's canonical name; the value is a list of pages at which they are referenced.
 
 # First locate all the people and create empty entries for them
-peopleReferences: Dict[str, str]={}
+peopleReferences: Dict[str, List[str]]={}
 Log("***Creating dict of people references")
 for fancyPage in fancyPagesDictByWikiname.values():
     if fancyPage.IsPerson():
