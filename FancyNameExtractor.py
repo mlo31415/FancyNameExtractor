@@ -54,7 +54,9 @@ Log("   "+str(len(allFancy3PagesFnames))+" pages found")
 
 fancyPagesDictByWikiname: Dict[str, F3Page]={}     # Key is page's canname; Val is a FancyPage class containing all the references on the page
 
-ignoredPagePrefixes=["Template;colon;", "Log 202"]
+ignoredPagePrefixes=["Template;colon;", # Templates
+                     "Log 202"          # Log pages (which start with Log followed by the year)
+                     ]
 ignoredPages=["Standards", "Admin"]
 
 Log("***Reading local copies of pages and scanning for links")
