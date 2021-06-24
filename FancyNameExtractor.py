@@ -78,12 +78,12 @@ for pageFname in allFancy3PagesFnames:
 Log("\n   "+str(len(fancyPagesDictByWikiname))+" semi-unique pages found")
 
 Log("Build the redirects table")
-g_canonicalNames: Dict[str, str]={}
+g_ultimateRedirect: Dict[str, str]={}
 for val in fancyPagesDictByWikiname.values():
     if val.IsRedirectpage:
-        g_canonicalNames[val.Name]=val.Redirect
+        g_ultimateRedirect[val.Name]=val.Redirect
     else:
-        g_canonicalNames[val.Name]=val.Name
+        g_ultimateRedirect[val.Name]=val.Name
 
 # Build a locale database
 Log("\n\n***Building a locale dictionary")
@@ -339,13 +339,13 @@ def Crosscheck(inputList, checkList) -> int:
 def CanonicalName(name: str) -> str:
     if name is None or name == "":
         return ""
-    assert len(g_canonicalNames) > 0
+    assert len(g_ultimateRedirect)>0
     # Because Mediawiki always forces the 1st character of a page name to be UC, make it so here.
     name=name[0].upper()+name[1:]
-    if name not in g_canonicalNames.keys():
+    if name not in g_ultimateRedirect.keys():
         Log("CanonicalName error: '"+name+"' not found in canonicalNames")
         return name
-    return g_canonicalNames[name]
+    return g_ultimateRedirect[name]
 
 # Scan for a virtual flag
 # Return True/False and remaining text after V-flag is removed
