@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Optional, Dict, Set, Tuple, List, Union
+from dataclasses import dataclass, field
 
 import os
 import re
@@ -93,7 +94,7 @@ for page in fancyPagesDictByWikiname.values():
         LogSetHeader("Processing Locale "+page.Name)
         locales.add(page.Name)
     else:
-        if page.UltimateRedirect is not None and page.UltimateRedirect in fancyPagesDictByWikiname.keys():
+        if page.UltimateRedirect != "" and page.UltimateRedirect in fancyPagesDictByWikiname.keys():
             if "Locale" in fancyPagesDictByWikiname[page.UltimateRedirect].Tags:
                 LogSetHeader("Processing Locale "+page.Name)
                 locales.add(page.Name)
@@ -294,15 +295,17 @@ def ScanForLocales(s: str) -> Optional[Set[str]]:
 
 #------------------------------------
 # Just a simple class to conveniently wrap a bunch of data
+@dataclass
 class ConInfo:
-    def __init__(self, Link: str="", Text: str="", Loc: str="", DateRange: FanzineDateRange=FanzineDateRange(), Virtual: bool=False, Cancelled: bool=False):
-        self.Link: str=Link  # The actual text of the link on the series page
-        self.NameInSeriesList: str=Text  # The displayed text for that link on the series page
-        self.Loc=Loc
-        self.DateRange: FanzineDateRange=DateRange
-        self.Virtual: bool=Virtual
-        self.Cancelled: bool=Cancelled
-        self.Override: str=""
+    #def __init__(self, Link: str="", Text: str="", Loc: str="", DateRange: FanzineDateRange=FanzineDateRange(), Virtual: bool=False, Cancelled: bool=False):
+    Link: str=""  # The actual text of the link on the series page
+    NameInSeriesList: str=""  # The displayed text for that link on the series page
+    Loc: str=""
+    Text: str=""
+    DateRange: FanzineDateRange=field(default=FanzineDateRange())
+    Virtual: bool=False
+    Cancelled: bool=False
+    Override: str=""
 
     def __str__(self) -> str:
         s="Link: "+(self.Link if self.Link is not None else "None")+"  Name="+self.NameInSeriesList+"  Date="+str(self.DateRange)+"  Location="+self.Loc
@@ -518,23 +521,15 @@ for page in fancyPagesDictByWikiname.values():
                     #   These are three (or two) different names for the same con.
                     # We will assume that there is only limited mixing of these forms!
 
+                    @dataclass
                     class ConName:
-                        def __init__(self, Name: str="", Link: str="", Cancelled: bool=False):
-                            self.Name: str=Name
-                            self.Cancelled: bool=Cancelled
-                            self.Link=Link
+                        #def __init__(self, Name: str="", Link: str="", Cancelled: bool=False):
+                        Name: str=""
+                        Cancelled: bool=False
+                        Link: str=""
 
                         def __lt__(self, val: ConName) -> bool:
                             return self.Name < val.Name
-
-                        @property
-                        def Link(self) -> Optional[str]:
-                            return self._link
-                        @Link.setter
-                        def Link(self, val: Optional[str]):
-                            if val is not None and len(val) == 0:
-                                val=None
-                            self._link=val
 
                     def SplitConText(constr: str) -> Tuple[str, str]:
                         # Now convert all link|text to separate link and text
@@ -806,7 +801,7 @@ Log("***Create inverse redirects tables")
 redirects: Dict[str, str]={}            # Key is the name of a redirect; value is the ultimate destination
 inverseRedirects:Dict[str, List[str]]={}     # Key is the name of a destination page, value is a list of names of pages that redirect to it
 for fancyPage in fancyPagesDictByWikiname.values():
-    if fancyPage.Redirect is not None:
+    if fancyPage.Redirect != "":
         redirects[fancyPage.Name]=fancyPage.UltimateRedirect
         inverseRedirects.setdefault(fancyPage.Redirect, [])
         inverseRedirects[fancyPage.Redirect].append(fancyPage.Name)
@@ -841,7 +836,7 @@ for fancyPage in fancyPagesDictByWikiname.values():
 
 # Now go through all outgoing references on the pages and add those which reference a person to that person's list
 for fancyPage in fancyPagesDictByWikiname.values():
-    if fancyPage.OutgoingReferences is not None:
+    if len(fancyPage.OutgoingReferences) > 0:
         for outRef in fancyPage.OutgoingReferences:
             if outRef.LinkWikiName in peopleReferences.keys():    # So it's a people
                 peopleReferences[outRef.LinkWikiName].append(fancyPage.Name)
