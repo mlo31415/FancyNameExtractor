@@ -286,7 +286,7 @@ def ScanForLocales(s: str) -> Optional[Set[str]]:
         # The group is a possibly repeated non-capturing group
         #       which is a UC letter followed by one or more letters followed by an optional period or comma followed by zero or more spaces
         # ending with "]]"
-    lst=re.findall("in \[\[((?:[A-Z][A-Za-z]+[\.,]?\s*)+)\]\]", s)
+    lst=re.findall("in \[\[((?:[A-Z][A-Za-z]+[.,]?\s*)+)]]", s)
     if len(lst) > 0:
         out.add(BaseFormOfLocaleName(localeBaseForms, lst[0]))
     return out
