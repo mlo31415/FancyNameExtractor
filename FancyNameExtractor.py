@@ -899,6 +899,7 @@ def RemoveTrailingParens(s: str) -> str:
 # Some names are not worth adding to the list of people names.  Try to detect them.
 def IsInterestingName(p: str) -> bool:
     if " " not in p and "-" in p:   # We want to ignore names like "Bob-Tucker" in favor of "Bob Tucker"
+        #TODO: Deal with hypenated last names
         return False
     if " " in p:                    # If there are spaces in the name, at least one of them needs to be followed by a UC letter
         if re.search(" ([A-Z]|de|ha|von|Č)", p) is None:  # We want to ignore "Bob tucker"
