@@ -411,10 +411,10 @@ for page in fancyPagesDictByWikiname.values():
 
                     # Check the row for (virtual) in any form. If found, set the virtual flag and remove the text from the line
                     virtual=False
-                    for index, col in enumerate(row):
+                    for idx, col in enumerate(row):
                         v2, col=ScanForVirtual(col)
                         if v2:
-                            row[index]=col      # Update row with the virtual flag removed
+                            row[idx]=col      # Update row with the virtual flag removed
                         virtual=virtual or v2
                     Log("Virtual="+str(virtual))
 
