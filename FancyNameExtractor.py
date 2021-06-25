@@ -831,7 +831,7 @@ with open("Untagged locales.txt", "w+", encoding='utf-8') as f:
 peopleReferences: Dict[str, List[str]]={}
 Log("***Creating dict of people references")
 for fancyPage in fancyPagesDictByWikiname.values():
-    if fancyPage.IsPerson():
+    if fancyPage.IsPerson:
         peopleReferences.setdefault(fancyPage.Name, [])
 
 # Now go through all outgoing references on the pages and add those which reference a person to that person's list
@@ -906,7 +906,7 @@ peopleNames=set()
 # First make a list of all the pages labelled as "fan" or "pro"
 with open("Peoples rejected names.txt", "w+", encoding='utf-8') as f:
     for fancyPage in fancyPagesDictByWikiname.values():
-        if fancyPage.IsPerson():
+        if fancyPage.IsPerson:
             peopleNames.add(RemoveTrailingParens(fancyPage.Name))
             # Then all the redirects to one of those pages.
             if fancyPage.Name in inverseRedirects.keys():
