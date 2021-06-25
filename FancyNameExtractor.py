@@ -314,9 +314,6 @@ class ConInfo:
             s+="  Override="+self.Override
         return s
 
-    @property
-    def CannonicalName(self) -> str:
-        return CanonicalName(self.Link)
 
     @property
     def Loc(self) -> str:
@@ -335,17 +332,6 @@ def Crosscheck(inputList, checkList) -> int:
     n=next((item for item in ListofHits if item is not None), None)
     return n
 
-
-def CanonicalName(name: str) -> str:
-    if name is None or name == "":
-        return ""
-    assert len(g_ultimateRedirect)>0
-    # Because Mediawiki always forces the 1st character of a page name to be UC, make it so here.
-    name=name[0].upper()+name[1:]
-    if name not in g_ultimateRedirect.keys():
-        Log("CanonicalName error: '"+name+"' not found in canonicalNames")
-        return name
-    return g_ultimateRedirect[name]
 
 # Scan for a virtual flag
 # Return True/False and remaining text after V-flag is removed
@@ -725,7 +711,7 @@ with open("Con location discrepancies.txt", "w+", encoding='utf-8') as f:
                 for place in m:
                     place=WikiExtractLink(place)
                     # Find the convention in the conventions dictionary and add the location if appropriate.
-                    conname=CanonicalName(page.Name)
+                    conname=page.UltimateRedirect
                     listcons=[x for x in conventions if x.NameInSeriesList == conname]
                     for con in listcons:
                         if not LocMatch(place, con.Loc):
