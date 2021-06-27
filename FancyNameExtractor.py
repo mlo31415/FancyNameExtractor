@@ -298,33 +298,39 @@ def ScanForLocales(s: str) -> Optional[Set[str]]:
 @dataclass
 class ConInfo:
     #def __init__(self, Link: str="", Text: str="", Loc: str="", DateRange: FanzineDateRange=FanzineDateRange(), Virtual: bool=False, Cancelled: bool=False):
-    Link: str=""  # The actual text of the link on the series page
-    NameInSeriesList: str=""  # The displayed text for that link on the series page
+    # The link is the name of the page referred to
+    # NameInSeriesList is the name displayed in the table   E.g., [[Link|NameInSeriesList]]
+    # If the link is simple, e.g. [[simple link]], then that value should go in NameInSeriesList
+    _Link: str=""
+    NameInSeriesList: str=""
     Loc: str=""
-    Text: str=""
     DateRange: FanzineDateRange=field(default=FanzineDateRange())
     Virtual: bool=False
     Cancelled: bool=False
     Override: str=""
 
     def __str__(self) -> str:
-        s="Link: "+(self.Link if self.Link is not None else "None")+"  Name="+self.NameInSeriesList+"  Date="+str(self.DateRange)+"  Location="+self.Loc
+        s="Link="+self.Link+"  Name="+self.NameInSeriesList+"  Date="+str(self.DateRange)+"  Location="+self.Loc
         if self.Cancelled and not self.DateRange.Cancelled:     # Print this cancelled only if we have not already done so in the date range
-            s+=" cancelled=True"
+            s+="  cancelled=True"
         if self.Virtual:
             s+=" virtual=True"
         if len(self.Override) > 0:
             s+="  Override="+self.Override
         return s
 
+    def SetLoc(self, val: str):
+        # We don't want any links in this
+        self.Loc=WikiExtractLink(val)
 
     @property
-    def Loc(self) -> str:
-        return self._loc
-    @Loc.setter
-    def Loc(self, val: str):
-        # We don't want any links in this
-        self._loc=WikiExtractLink(val)
+    def Link(self) -> str:
+        if self._Link == "":    # If the link was not set, it's a simple link and just use the displayed text
+            return self.NameInSeriesList
+        return self._Link
+    @Link.setter
+    def Link(self, val: str) -> None:
+        self._Link=val
 
 
 Log("***Analyzing convention series tables")
@@ -370,7 +376,7 @@ for page in fancyPagesDictByWikiname.values():
         locColumn=None     # The convention's location
         conColumn=None     # The convention's name
         dateColumn=None    # The conventions dates
-        for index, table in enumerate(page.Table):
+        for index, table in enumerate(page.Tables):
             numcolumns=len(table.Headers)
 
             listLocationHeaders=["Location"]
@@ -380,12 +386,12 @@ for page in fancyPagesDictByWikiname.values():
             listNameHeaders=["Convention", "Convention Name", "Name"]
             conColumn=Crosscheck(listNameHeaders, table.Headers)
             if conColumn is None:
-                Log("***Can't find Convention column in table "+str(index+1)+" of "+str(len(page.Table)), isError=True)
+                Log("***Can't find Convention column in table "+str(index+1)+" of "+str(len(page.Tables)), isError=True)
 
             listDateHeaders=["Date", "Dates"]
             dateColumn=Crosscheck(listDateHeaders, table.Headers)
             if conColumn is None:
-                Log("***Can't find Dates column in table "+str(index+1)+" of "+str(len(page.Table)), isError=True)
+                Log("***Can't find Dates column in table "+str(index+1)+" of "+str(len(page.Tables)), isError=True)
 
             # If we don't have a convention column and a date column we skip the whole table.
             if conColumn is not None and dateColumn is not None:
@@ -393,7 +399,7 @@ for page in fancyPagesDictByWikiname.values():
                 # Walk the convention table, extracting the individual conventions
                 # (Sometimes there will be multiple table
                 if table.Rows is None:
-                    Log("***Table "+str(index+1)+" of "+str(len(page.Table))+"has no rows", isError=True)
+                    Log("***Table "+str(index+1)+" of "+str(len(page.Tables))+"has no rows", isError=True)
                     continue
 
                 for row in table.Rows:
@@ -620,7 +626,7 @@ for page in fancyPagesDictByWikiname.values():
                             Log("AppendCon: duplicate - "+str(ci)+"   and   "+str(hits[0]))
                             # If there are two sources for the convention's location and one is empty, use the other.
                             if len(hits[0].Loc) == 0:
-                                hits[0].Loc=ci.Loc
+                                hits[0].SetLoc(ci.Loc)
 
                     # The first case we need to look at it whether cons[0] has a type of list of ConInfo
                     # This is one con with multiple names
@@ -637,11 +643,11 @@ for page in fancyPagesDictByWikiname.values():
                                 if len(override) > 0:
                                     override+=" / "
                                 override+="[["
-                                if co.Link is not None and len(co.Link) > 0:
+                                if len(co.Link) > 0:
                                     override+=co.Link+"|"
                                 override+=co.Name+"]]"
                             v = False if cancelled else virtual
-                            ci=ConInfo(Link="dummy", Text="dummy", Loc=conlocation, DateRange=dt, Virtual=v, Cancelled=cancelled)
+                            ci=ConInfo(_Link="dummy", NameInSeriesList="dummy", Loc=conlocation, DateRange=dt, Virtual=v, Cancelled=cancelled)
                             ci.Override=override
                             AppendCon(ci)
                             Log("#append 1: "+str(ci))
@@ -652,7 +658,7 @@ for page in fancyPagesDictByWikiname.values():
                             cancelled=cons[i].Cancelled or dates[i].Cancelled
                             dates[i].Cancelled=False    # We've xferd this to ConInfo and don't still want it here because it would print twice
                             v=False if cancelled else virtual
-                            ci=ConInfo(Link=cons[i].Link, Text=cons[i].Name, Loc=conlocation, DateRange=dates[i], Virtual=v, Cancelled=cancelled)
+                            ci=ConInfo(_Link=cons[i].Link, NameInSeriesList=cons[i].Name, Loc=conlocation, DateRange=dates[i], Virtual=v, Cancelled=cancelled)
                             if ci.DateRange.IsEmpty():
                                 Log("***"+ci.Link+"has an empty date range: "+str(ci.DateRange), isError=True)
                             Log("#append 2: "+str(ci))
@@ -663,7 +669,7 @@ for page in fancyPagesDictByWikiname.values():
                             cancelled=co.Cancelled or dates[0].Cancelled
                             dates[0].Cancelled = False
                             v=False if cancelled else virtual
-                            ci=ConInfo(Link=co.Link, Text=co.Name, Loc=conlocation, DateRange=dates[0], Virtual=v, Cancelled=cancelled)
+                            ci=ConInfo(_Link=co.Link, NameInSeriesList=co.Name, Loc=conlocation, DateRange=dates[0], Virtual=v, Cancelled=cancelled)
                             AppendCon(ci)
                             Log("#append 3: "+str(ci))
                     elif len(cons) == 1 and len(dates) > 1:
@@ -671,7 +677,7 @@ for page in fancyPagesDictByWikiname.values():
                             cancelled=cons[0].Cancelled or dt.Cancelled
                             dt.Cancelled = False
                             v=False if cancelled else virtual
-                            ci=ConInfo(Link=cons[0].Link, Text=cons[0].Name, Loc=conlocation, DateRange=dt, Virtual=v, Cancelled=cancelled)
+                            ci=ConInfo(_Link=cons[0].Link, NameInSeriesList=cons[0].Name, Loc=conlocation, DateRange=dt, Virtual=v, Cancelled=cancelled)
                             AppendCon(ci)
                             Log("#append 4: "+str(ci))
                     else:
@@ -711,7 +717,7 @@ with open("Con location discrepancies.txt", "w+", encoding='utf-8') as f:
                     for con in listcons:
                         if not LocMatch(place, con.Loc):
                             if con.Loc == "":   # If there previously was no location from the con series page, substitute what we found in the con instance page
-                                con.Loc=place
+                                con.SetLoc(place)
                                 continue
                             f.write(conname+": Location mismatch: '"+place+"' != '"+con.Loc+"'\n")
 
@@ -722,7 +728,7 @@ for con in conventions:
     if len(loc) > 1:
         Log("  In "+con.NameInSeriesList+"  found more than one location: "+str(loc))
     if len(loc) > 0:
-        con.Loc=iter(loc).__next__()    # Nasty code to get one element from the set
+        con.SetLoc=(iter(loc).__next__())    # Nasty code to get one element from the set
 
 
 # Sort the con dictionary  into date order
