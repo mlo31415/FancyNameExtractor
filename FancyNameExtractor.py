@@ -78,14 +78,6 @@ for pageFname in allFancy3PagesFnames:
 
 Log("\n   "+str(len(fancyPagesDictByWikiname))+" semi-unique pages found")
 
-Log("Build the redirects table")
-g_ultimateRedirect: Dict[str, str]={}
-for val in fancyPagesDictByWikiname.values():
-    if val.IsRedirectpage:
-        g_ultimateRedirect[val.Name]=val.Redirect
-    else:
-        g_ultimateRedirect[val.Name]=val.Name
-
 # Build a locale database
 Log("\n\n***Building a locale dictionary")
 locales: Set[str]=set()  # We use a set to eliminate duplicates and to speed checks
@@ -94,8 +86,8 @@ for page in fancyPagesDictByWikiname.values():
         LogSetHeader("Processing Locale "+page.Name)
         locales.add(page.Name)
     else:
-        if page.UltimateRedirect != "" and page.UltimateRedirect in fancyPagesDictByWikiname.keys():
-            if "Locale" in fancyPagesDictByWikiname[page.UltimateRedirect].Tags:
+        if page.Redirect != "" and page.Redirect in fancyPagesDictByWikiname.keys():
+            if "Locale" in fancyPagesDictByWikiname[page.Redirect].Tags:
                 LogSetHeader("Processing Locale "+page.Name)
                 locales.add(page.Name)
 
@@ -712,7 +704,7 @@ with open("Con location discrepancies.txt", "w+", encoding='utf-8') as f:
                 for place in m:
                     place=WikiExtractLink(place)
                     # Find the convention in the conventions dictionary and add the location if appropriate.
-                    conname=page.UltimateRedirect
+                    conname=page.Redirect
                     listcons=[x for x in conventions if x.NameInSeriesList == conname]
                     for con in listcons:
                         if not LocMatch(place, con.Loc):
@@ -808,12 +800,12 @@ redirects: Dict[str, str]={}            # Key is the name of a redirect; value i
 inverseRedirects:Dict[str, List[str]]={}     # Key is the name of a destination page, value is a list of names of pages that redirect to it
 for fancyPage in fancyPagesDictByWikiname.values():
     if fancyPage.Redirect != "":
-        redirects[fancyPage.Name]=fancyPage.UltimateRedirect
+        redirects[fancyPage.Name]=fancyPage.Redirect
         inverseRedirects.setdefault(fancyPage.Redirect, [])
         inverseRedirects[fancyPage.Redirect].append(fancyPage.Name)
-        inverseRedirects.setdefault(fancyPage.UltimateRedirect, [])
-        if fancyPage.UltimateRedirect != fancyPage.Redirect:
-            inverseRedirects[fancyPage.UltimateRedirect].append(fancyPage.Name)
+        inverseRedirects.setdefault(fancyPage.Redirect, [])
+        if fancyPage.Redirect != fancyPage.Redirect:
+            inverseRedirects[fancyPage.Redirect].append(fancyPage.Name)
 
 # Analyze the Locales
 # Create a list of things that redirect to a Locale, but are not tagged as a locale.
@@ -821,7 +813,7 @@ Log("***Look for things that redirect to a Locale, but are not tagged as a Local
 with open("Untagged locales.txt", "w+", encoding='utf-8') as f:
     for fancyPage in fancyPagesDictByWikiname.values():
         if "Locale" in fancyPage.Tags:                        # We only care about locales
-            if fancyPage.UltimateRedirect == fancyPage.Name:        # We only care about the ultimate redirect
+            if fancyPage.Redirect == "":        # We don't care about redirects
                 if fancyPage.Name in inverseRedirects.keys():
                     for inverse in inverseRedirects[fancyPage.Name]:    # Look at everything that redirects to this
                         if "Locale" not in fancyPagesDictByWikiname[inverse].Tags:
@@ -918,7 +910,7 @@ with open("Peoples rejected names.txt", "w+", encoding='utf-8') as f:
             if fancyPage.Name in inverseRedirects.keys():
                 for p in inverseRedirects[fancyPage.Name]:
                     if p in fancyPagesDictByWikiname.keys():
-                        peopleNames.add(RemoveTrailingParens(fancyPagesDictByWikiname[p].UltimateRedirect))
+                        peopleNames.add(RemoveTrailingParens(fancyPagesDictByWikiname[p].Redirect))
                         if IsInterestingName(p):
                             peopleNames.add(p)
                         # else:
