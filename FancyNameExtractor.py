@@ -10,6 +10,7 @@ from F3Page import F3Page, DigestPage
 from Log import Log, LogOpen, LogSetHeader
 from HelpersPackage import SplitOnSpan, WindowsFilenameToWikiPagename, WikiExtractLink, CrosscheckListElement
 from FanzineIssueSpecPackage import FanzineDateRange
+from ConInfo import ConInfo
 
 # The goal of this program is to produce an index to all of the names on Fancy 3 and fanac.org with links to everything interesting about them.
 # We'll construct a master list of names with a preferred name and zero or more variants.
