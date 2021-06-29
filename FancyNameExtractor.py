@@ -8,7 +8,7 @@ from datetime import datetime
 
 from F3Page import F3Page, DigestPage
 from Log import Log, LogOpen, LogSetHeader
-from HelpersPackage import SplitOnSpan, WindowsFilenameToWikiPagename, WikiExtractLink, FindIndexOfStringInList
+from HelpersPackage import SplitOnSpan, WindowsFilenameToWikiPagename, WikiExtractLink, CrosscheckListElement
 from FanzineIssueSpecPackage import FanzineDateRange
 
 # The goal of this program is to produce an index to all of the names on Fancy 3 and fanac.org with links to everything interesting about them.
@@ -287,12 +287,6 @@ def ScanForLocales(s: str) -> Optional[Set[str]]:
 
 Log("***Analyzing convention series tables")
 
-# Is at least one item in inputlist also in checklist?
-def Crosscheck(inputList, checkList) -> int:
-    ListofHits=[FindIndexOfStringInList(checkList, x) for x in inputList]
-    n=next((item for item in ListofHits if item is not None), None)
-    return n
-
 
 # Scan for a virtual flag
 # Return True/False and remaining text after V-flag is removed
@@ -332,16 +326,16 @@ for page in fancyPagesDictByWikiname.values():
             numcolumns=len(table.Headers)
 
             listLocationHeaders=["Location"]
-            locColumn=Crosscheck(listLocationHeaders, table.Headers)
+            locColumn=CrosscheckListElement(listLocationHeaders, table.Headers)
             # We don't log a missing location column because that is common and not an error -- we'll try to get the location later from the con instance's page
 
             listNameHeaders=["Convention", "Convention Name", "Name"]
-            conColumn=Crosscheck(listNameHeaders, table.Headers)
+            conColumn=CrosscheckListElement(listNameHeaders, table.Headers)
             if conColumn is None:
                 Log("***Can't find Convention column in table "+str(index+1)+" of "+str(len(page.Tables)), isError=True)
 
             listDateHeaders=["Date", "Dates"]
-            dateColumn=Crosscheck(listDateHeaders, table.Headers)
+            dateColumn=CrosscheckListElement(listDateHeaders, table.Headers)
             if conColumn is None:
                 Log("***Can't find Dates column in table "+str(index+1)+" of "+str(len(page.Tables)), isError=True)
 
