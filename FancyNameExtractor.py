@@ -779,19 +779,13 @@ with open("Untagged locales.txt", "w+", encoding='utf-8') as f:
 # ...
 # Create a dictionary of page references for people pages.
 # The key is a page's canonical name; the value is a list of pages at which they are referenced.
-
-# First locate all the people and create empty entries for them
 peopleReferences: Dict[str, List[str]]={}
 Log("***Creating dict of people references")
 for fancyPage in fancyPagesDictByWikiname.values():
-    if fancyPage.IsPerson:
+    if fancyPage.IsPerson and len(fancyPage.OutgoingReferences) > 0:
         peopleReferences.setdefault(fancyPage.Name, [])
-
-# Now go through all outgoing references on the pages and add those which reference a person to that person's list
-for fancyPage in fancyPagesDictByWikiname.values():
-    if len(fancyPage.OutgoingReferences) > 0:
         for outRef in fancyPage.OutgoingReferences:
-            if outRef.LinkWikiName in peopleReferences.keys():    # So it's a people
+            if fancyPagesDictByWikiname[outRef.LinkWikiName].IsPerson:
                 peopleReferences[outRef.LinkWikiName].append(fancyPage.Name)
 
 # ...
