@@ -637,7 +637,7 @@ def LocMatch(loc1: str, loc2: str) -> bool:
     loc1=loc1.replace("[[", "").replace("]]", "")
     loc2=loc2.replace("[[", "").replace("]]", "")
 
-    # We want 'Glasgow, UK' to match 'Glasgow', so deal with that specific pattern
+    # We want 'Glasgow, UK' to match 'Glasgow', so deal with the pattern of <City>, <Country Code> matching <City>
     m=re.match("^/s*(.*), [A-Z]{2}\s*$", loc1)
     if m is not None:
         loc1=m.groups()[0]
@@ -849,7 +849,7 @@ def IsInterestingName(p: str) -> bool:
     if " " not in p and "-" in p:   # We want to ignore names like "Bob-Tucker" in favor of "Bob Tucker"
         #TODO: Deal with hypenated last names
         return False
-    if " " in p:                    # If there are spaces in the name, at least one of them needs to be followed by a UC letter
+    if " " in p:                    # If there are spaces in the name, at least one of them needs to be followed by a UC letter or something like "deCordova"f
         if re.search(" ([A-Z]|de|ha|von|Č)", p) is None:  # We want to ignore "Bob tucker"
             return False
     return True
